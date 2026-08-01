@@ -1,7 +1,9 @@
 """Local speech-to-text transcription using the optional faster-whisper package."""
 
+import hashlib
 import logging
 import os
+import shutil
 import threading
 import time
 from pathlib import Path
@@ -59,6 +61,19 @@ def format_srt_timestamp(seconds):
     return f"{hours:02d}:{minutes:02d}:{seconds:02d},{milliseconds:03d}"
 
 
+def _transcript_cache_path(input_path, cache_dir, model_name, language):
+    """Return a stable cache file for identical media and recognition settings."""
+    if cache_dir is None:
+        return None
+    digest = hashlib.sha256()
+    with Path(input_path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    settings = f"{model_name}\0{language or ''}".encode()
+    digest.update(settings)
+    return Path(cache_dir) / f"{digest.hexdigest()}.srt"
+
+
 def transcribe_to_srt(
     input_path,
     output_path,
@@ -67,6 +82,7 @@ def transcribe_to_srt(
     model_name="small",
     language=None,
     cleanup_input=True,
+    cache_dir=None,
 ):
     """Transcribe a media file and write standard SRT output."""
     input_path = Path(input_path)
@@ -74,6 +90,23 @@ def transcribe_to_srt(
     progress_path = Path(progress_path)
     slot_acquired = False
     try:
+        cache_path = _transcript_cache_path(input_path, cache_dir, model_name, language)
+        if cache_path is not None and cache_path.is_file():
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(cache_path, output_path)
+            rows = [line for line in output_path.read_text(encoding="utf-8").split("\n\n") if line.strip()]
+            write_progress(
+                progress_path,
+                {
+                    "status": "done",
+                    "progress": 100,
+                    "message": f"已复用已有字幕，共 {len(rows)} 段",
+                    "segment_count": len(rows),
+                    "cached": True,
+                    "srt_url": f"/api/transcribe/{job_id}/srt",
+                },
+            )
+            return
         write_progress(progress_path, {"status": "queued", "progress": 2, "message": "等待本机字幕任务…"})
         _transcription_slots.acquire()
         slot_acquired = True
@@ -118,6 +151,11 @@ def transcribe_to_srt(
                 last_progress_write = now
 
         output_path.write_text("\n\n".join(rows) + ("\n" if rows else ""), encoding="utf-8")
+        if cache_path is not None:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            temp_cache = cache_path.with_suffix(".tmp")
+            shutil.copyfile(output_path, temp_cache)
+            os.replace(temp_cache, cache_path)
         detected_language = getattr(info, "language", None)
         write_progress(
             progress_path,

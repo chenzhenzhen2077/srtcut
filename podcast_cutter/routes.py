@@ -239,6 +239,7 @@ def transcribe_video():
     worker = threading.Thread(
         target=transcribe_to_srt,
         args=(input_path, output_path, progress_path, job_id, model_name, language),
+        kwargs={"cache_dir": Path(current_app.config["WORK_DIR"]) / "transcript-cache"},
         daemon=True,
         name=f"transcribe-{job_id}",
     )
@@ -307,6 +308,7 @@ def start_media_project():
     worker = threading.Thread(
         target=transcribe_to_srt,
         args=(source_path, output_path, progress_path, project_id, model_name, language, False),
+        kwargs={"cache_dir": Path(current_app.config["WORK_DIR"]) / "transcript-cache"},
         daemon=True,
         name=f"media-transcribe-{project_id}",
     )
