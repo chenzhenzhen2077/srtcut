@@ -17,7 +17,6 @@ from .media import (
 )
 from .speech import faster_whisper_available, transcribe_to_srt
 
-
 logger = logging.getLogger(__name__)
 api = Blueprint("api", __name__)
 
@@ -119,7 +118,7 @@ def cut_video():
     try:
         raw_cuts = json.loads(request.form.get("cuts", "[]"))
         cuts = normalize_cuts(raw_cuts, max_cuts=current_app.config["MAX_CUTS"])
-    except (json.JSONDecodeError, ValueError) as exc:
+    except (json.JSONDecodeError, TypeError, ValueError) as exc:
         return jsonify({"error": str(exc)}), 400
     if not cuts:
         return jsonify({"error": "没有有效的剪辑段"}), 400

@@ -1,6 +1,5 @@
 """Command-line entry point."""
 
-from pathlib import Path
 
 from . import create_app
 from .config import Config

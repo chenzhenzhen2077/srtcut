@@ -39,7 +39,7 @@ def _get_model(model_name):
 
 
 def format_srt_timestamp(seconds):
-    milliseconds = max(0, int(round(float(seconds) * 1000)))
+    milliseconds = max(0, round(float(seconds) * 1000))
     hours, remainder = divmod(milliseconds, 3_600_000)
     minutes, remainder = divmod(remainder, 60_000)
     seconds, milliseconds = divmod(remainder, 1000)

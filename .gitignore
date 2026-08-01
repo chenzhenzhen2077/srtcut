@@ -1,4 +1,5 @@
 __pycache__/
+*.egg-info/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
@@ -10,4 +11,3 @@ work/*
 !work/.gitkeep
 bin/ffmpeg
 bin/ffprobe
-

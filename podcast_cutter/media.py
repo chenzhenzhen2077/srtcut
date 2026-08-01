@@ -14,7 +14,6 @@ from functools import lru_cache
 from pathlib import Path
 from urllib.request import urlopen
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -45,14 +44,14 @@ def binary_version(binary):
 def normalize_cuts(raw_cuts, max_cuts=2000, duration=None):
     """Validate, sort and merge cut ranges before they reach FFmpeg."""
     if not isinstance(raw_cuts, list):
-        raise ValueError("cuts 必须是数组")
+        raise TypeError("cuts 必须是数组")
     if len(raw_cuts) > max_cuts:
         raise ValueError(f"剪辑段数量不能超过 {max_cuts}")
 
     normalized = []
     for item in raw_cuts:
         if not isinstance(item, dict):
-            raise ValueError("剪辑段格式无效")
+            raise TypeError("剪辑段格式无效")
         try:
             start = float(item["start"])
             end = float(item["end"])
@@ -230,8 +229,7 @@ def run_ffmpeg_cut(ffmpeg_path, ffprobe_path, input_path, output_path, progress_
                 last_progress = 99
 
             elapsed_progress = min(90, int((time.time() - started_at) / max(estimated_output_duration * 0.8, 1) * 100))
-            if elapsed_progress > last_progress:
-                last_progress = elapsed_progress
+            last_progress = max(last_progress, elapsed_progress)
             write_progress(progress_path, {"status": "running", "progress": last_progress, "message": f"剪辑中… {last_progress}%"})
 
         process.wait()
