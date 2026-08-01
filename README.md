@@ -1,20 +1,107 @@
 # SRT Cutter
 
-本地运行的播客字幕分析与视频剪辑工具。把这个 GitHub 仓库下载到自己的电脑上，就可以像开发者一样运行完整功能；视频、字幕、Whisper 识别和 FFmpeg 剪辑都在本机完成，不需要购买云服务器。
+本地运行的播客字幕分析与视频剪辑工具。把这个 GitHub 仓库下载到自己的电脑上，就可以运行完整功能；视频、字幕、Whisper 识别和 FFmpeg 剪辑都在本机完成，不需要购买云服务器。
 
-## 给种子用户
+- 功能模拟演示：<https://chenzhenzhen2077.github.io/srtcut/>
+- 完整本地版本：<https://github.com/chenzhenzhen2077/srtcut>
 
-当前推荐使用 macOS。安装 Python 3.10 或更高版本后：
+静态演示可以模拟字幕、智能剪辑方案和导出结果，但不会处理真实文件。真实转写、FFmpeg 剪辑和文件下载需要按照下面步骤在 Mac 本地运行。
 
-1. 打开仓库页面，点击 **Code → Download ZIP**，解压项目。
-2. 双击项目里的 `start.command`。
-3. 第一次启动会自动创建 Python 环境并安装依赖，完成后自动打开 `http://127.0.0.1:8964`。
-4. 如果 macOS 不允许双击启动，在项目目录的终端执行：
+## Mac 安装与启动
+
+### 1. 安装 Python
+
+需要 Python 3.10 或更高版本。没有安装时，请先打开下面地址下载 macOS 安装包：
+
+<https://www.python.org/downloads/macos/>
+
+安装后打开“终端”，执行下面命令检查版本：
+
+```bash
+python3 --version
+```
+
+看到 `Python 3.10`、`3.11`、`3.12` 或更高版本即可继续。
+
+### 2. 下载项目
+
+1. 打开 <https://github.com/chenzhenzhen2077/srtcut>。
+2. 点击绿色的 **Code** 按钮。
+3. 点击 **Download ZIP**。
+4. 双击 ZIP 解压。默认文件夹通常是 `srtcut-main`。
+
+### 3. 在终端启动
+
+打开 Mac 的“终端”，复制下面整段代码。通常只需要修改第一行的项目文件夹位置：
+
+```bash
+# 只修改这一行：填写解压后的 srtcut-main 文件夹位置
+PROJECT_DIR="$HOME/Downloads/srtcut-main"
+
+cd "$PROJECT_DIR"
+chmod +x start.command
+./start.command
+```
+
+如果文件夹放在桌面，第一行改成：
+
+```bash
+PROJECT_DIR="$HOME/Desktop/srtcut-main"
+```
+
+如果不知道文件夹位置，可以在终端输入 `cd `（`cd` 后面保留一个空格），然后把 `srtcut-main` 文件夹从 Finder 拖进终端窗口，按回车，再执行：
 
 ```bash
 chmod +x start.command
 ./start.command
 ```
+
+第一次运行会自动完成以下操作：
+
+1. 创建项目专用的 Python 环境 `.venv`。
+2. 安装 Flask 和本地 Whisper 转写依赖。
+3. 启动本地服务。
+4. 自动打开 <http://127.0.0.1:8964>。
+
+安装依赖可能需要几分钟，请不要关闭终端。看到“服务已启动”后即可使用。
+
+### 4. FFmpeg 安装
+
+通常不需要提前安装 FFmpeg。启动页面后，如果显示“视频处理功能不可用”，点击页面里的 **安装组件**，程序会把 FFmpeg 安装到项目自己的 `bin/` 文件夹。
+
+已经安装 Homebrew 的用户，也可以在终端执行：
+
+```bash
+brew install ffmpeg
+```
+
+安装后可以这样检查：
+
+```bash
+ffmpeg -version
+ffprobe -version
+```
+
+### 5. macOS 提示无法打开时
+
+确认项目来自本仓库后，在项目目录执行：
+
+```bash
+xattr -dr com.apple.quarantine .
+chmod +x start.command
+./start.command
+```
+
+### 6. 下次启动和停止
+
+以后可以直接双击 `start.command`，或者再次执行：
+
+```bash
+cd "$HOME/Downloads/srtcut-main"
+./start.command
+```
+
+关闭运行 `start.command` 的终端窗口，或在终端按 `Control + C`，即可停止本地服务。
 
 首次使用自动字幕会下载 Whisper 模型，首次安装和模型下载可能需要一些时间。视频处理需要 FFmpeg；页面会在本机缺少 FFmpeg 时提供安装按钮，安装文件保存到项目自己的 `bin/` 目录。关闭启动脚本打开的终端窗口即可停止服务。
 

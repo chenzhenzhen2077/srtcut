@@ -48,6 +48,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font:14px/1.6 var(-
 .audio-workspace{position:fixed;inset:0;background:var(--bg);z-index:250;overflow:auto;padding:34px 22px}.audio-workspace.hidden{display:none}.audio-inner{width:min(920px,100%);margin:0 auto}.audio-top{display:flex;align-items:center;gap:12px;margin-bottom:28px}.audio-top h1{font-size:22px}.audio-top p{font-size:12px;color:var(--text2);margin-top:3px}.audio-step{background:var(--bg3);border:1px solid var(--bg4);border-radius:var(--radius);padding:18px;margin-bottom:14px}.audio-step h2{font-size:14px;margin-bottom:10px}.audio-upload{border:2px dashed var(--bg4);border-radius:var(--radius);padding:30px;text-align:center;cursor:pointer}.audio-upload:hover,.audio-upload.dragover{border-color:var(--accent);background:var(--bg2)}.audio-upload .icon{font-size:30px}.audio-upload p{font-size:12px;color:var(--text2)}.audio-file{color:var(--accent);font-size:12px;margin-top:7px;display:none}.audio-upload.has-file .audio-file{display:block}.audio-status{font-size:12px;color:var(--text2);margin-top:10px;min-height:20px}.audio-suggestions{display:flex;flex-direction:column;gap:6px}.audio-suggestion{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--bg4);padding:9px;border-radius:var(--radius-sm);font-size:11px}.audio-suggestion input{accent-color:var(--accent)}.audio-suggestion .time{font:10px var(--mono);color:var(--danger);min-width:130px}.audio-suggestion .reason{color:var(--text2);flex:1}.audio-total{font-size:11px;color:var(--text2);margin-top:10px}.podcast-flow{background:var(--bg2);border-left:3px solid var(--accent);padding:10px 12px;border-radius:var(--radius-sm);font-size:11px;color:var(--text2);line-height:1.7;margin-bottom:14px}.podcast-flow strong{color:var(--text)}.output-title{font-size:12px;font-weight:600;margin:16px 0 7px}.output-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}.output-choice{display:flex;gap:8px;align-items:flex-start;background:var(--bg2);border:1px solid var(--bg4);border-radius:var(--radius-sm);padding:10px;cursor:pointer}.output-choice:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--bg2))}.output-choice input{margin-top:3px;accent-color:var(--accent)}.output-choice strong{display:block;font-size:11px}.output-choice span{display:block;font-size:10px;color:var(--text2);line-height:1.5;margin-top:2px}.output-choice.disabled{opacity:.45;cursor:not-allowed}.podcast-result-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.podcast-quality{display:flex;gap:8px;align-items:center;font-size:11px;color:var(--text2);margin:8px 0}.podcast-quality select{background:var(--bg4);color:var(--text);border:1px solid var(--bg4);border-radius:var(--radius-sm);padding:4px 7px;font:11px var(--font)}#audioVideoChoice,#videoOnlyChoice{display:none}
 .theme-toggle{min-width:28px;padding:3px 7px}
 .smart-actions{display:flex;gap:8px;margin-top:12px}
+.demo-only{display:none}.static-demo .demo-only{display:inline-flex}
 .proposal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .proposal{background:var(--bg2);border:1px solid var(--bg4);border-radius:var(--radius-sm);padding:14px;display:flex;flex-direction:column;min-height:210px}
 .proposal h3{font-size:14px;margin-bottom:6px}.proposal .hook{color:var(--accent);font-size:12px;margin-bottom:8px}.proposal .summary{font-size:11px;line-height:1.6;color:var(--text2);flex:1}.proposal .meta{font:10px var(--mono);color:var(--text3);margin:10px 0}.proposal .btn{width:100%}
@@ -264,7 +265,7 @@ input[type=file]{display:none}
       <div class="smart-file-meta" id="smartFileMeta" style="display:none"><span id="smartFileSize"></span><span id="smartFileDuration"></span><span id="smartFileEta"></span></div>
       <div class="smart-guidance" id="mediaGuidance"><strong>上传建议：</strong>默认单文件上限 2GB；推荐单个视频不超过 500MB、10 分钟。超过 1GB 建议先切成 5-10 分钟片段处理。</div>
       <div class="smart-status" id="smartStatus">准备开始</div>
-      <div class="smart-actions"><button class="btn btn-primary" id="mediaSubtitleStart" onclick="startUnifiedTranscription()" disabled>生成字幕</button></div>
+      <div class="smart-actions"><button class="btn btn-outline demo-only" id="loadDemoButton" onclick="loadStaticDemo()">加载演示素材</button><button class="btn btn-primary" id="mediaSubtitleStart" onclick="startUnifiedTranscription()" disabled>生成字幕</button></div>
     </div>
     <div class="smart-step" id="videoChoiceStep" style="display:none">
       <h2>2. 选择分析方式</h2>
@@ -459,11 +460,103 @@ const state = {
   activeFillers: new Set(), videoFile: null, transcriptionFile: null, transcriptionJobId: null, jobId: null, _aiCuts: null, mode: null, theme: localStorage.getItem('srt_cutter_theme') || 'light', smartVideo: null, smartDuration: null, audioFile: null, audioJobId: null, audioProjectId: null, audioCuts: [], audioSourceKind: null, confirmedAudioCuts: [], podcastDownloads: {}, activeProjectId: null, activeSourceKind: null, activeTranscript: '', activeSegments: [], aiAvailable: false, aiProvider: null, aiModel: null, aiMessage: '', aiChannels: {local: null, api: null}, aiProviderPreference: null, selectedSmartProposalIndex: null, fineProjectId: null, fineSourceKind: null, fineDownloadUrl: null, fineDownloadUrls: {}, maxUploadBytes: 2*1024*1024*1024,
 };
 
+const STATIC_DEMO_SEGMENTS = [
+  {start:0,end:8,text:'大家好，今天我们聊聊怎么把一段十分钟的播客快速整理成可以发布的内容。'},
+  {start:10,end:18,text:'很多创作者录完以后，最头疼的其实不是拍摄，而是面对很长的素材不知道从哪里开始。'},
+  {start:22,end:29,text:'嗯，我自己刚开始的时候，也会把所有内容从头到尾反复听很多遍。'},
+  {start:32,end:40,text:'然后，然后就是一边听一边记时间点，这个过程其实特别消耗注意力。'},
+  {start:45,end:54,text:'第一步可以先生成字幕，让声音变成一份可以搜索和检查的文字时间线。'},
+  {start:58,end:67,text:'这里有一个关键点，就是字幕和原始音视频必须保持同一套时间码。'},
+  {start:72,end:81,text:'第二步是找出口癖、重复表达和明显的长停顿，再决定哪些地方真的应该删除。'},
+  {start:86,end:95,text:'我们不要为了短而短，还是要保留观点完整、听起来顺畅的部分。'},
+  {start:98,end:107,text:'比如这一段其实有一点重复，前后表达的是同一个意思，可以精简。'},
+  {start:112,end:121,text:'最后再用同一份剪辑决定生成音频和视频，这样两个版本的内容不会错位。'},
+  {start:125,end:133,text:'如果只想先确认节奏，也可以先导出音频，试听满意以后再生成视频。'},
+  {start:136,end:144,text:'这就是一套从字幕、内容判断到同步导出的完整播客剪辑流程。'},
+];
+
+const STATIC_DEMO_PROPOSALS = [
+  {title:'核心观点完整版',hook:'从创作者最头疼的剪辑问题切入',summary:'保留完整方法论，删除明显口癖和重复表达，适合发布为完整播客片段。',start:0,end:144,duration:144,cuts:[{start:22,end:29,reason:'口癖较多'},{start:32,end:40,reason:'重复表达'},{start:98,end:107,reason:'观点重复'}]},
+  {title:'新手快速上手版',hook:'先讲字幕时间线，再给出三步剪辑流程',summary:'聚焦字幕、内容筛选和同步导出，适合第一次了解产品的用户。',start:45,end:133,duration:88,cuts:[{start:86,end:95,reason:'补充说明可精简'},{start:98,end:107,reason:'重复示例'}]},
+  {title:'一分钟观点版',hook:'不要为了短而短，要保留完整观点',summary:'突出内容判断原则和音视频同步导出，适合短视频功能展示。',start:72,end:144,duration:72,cuts:[{start:98,end:107,reason:'重复表达'}]},
+];
+
+function isStaticDemo(){return location.hostname.endsWith('github.io')||new URLSearchParams(location.search).has('demo')}
+function demoDelay(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+function demoSrtTime(seconds){const ms=Math.round(seconds*1000),h=Math.floor(ms/3600000),m=Math.floor(ms%3600000/60000),s=Math.floor(ms%60000/1000),r=ms%1000;return [h,m,s].map(value=>String(value).padStart(2,'0')).join(':')+','+String(r).padStart(3,'0')}
+function buildStaticDemoSrt(){return STATIC_DEMO_SEGMENTS.map((segment,index)=>(index+1)+'\n'+demoSrtTime(segment.start)+' --> '+demoSrtTime(segment.end)+'\n'+segment.text).join('\n\n')}
+
+function configureStaticDemoUpload(){
+  if(!isStaticDemo())return;
+  const isAudio=state.mode==='audio';
+  document.getElementById('smartInput').disabled=true;
+  document.getElementById('smartUpload').onclick=loadStaticDemo;
+  document.getElementById('mediaUploadHint').textContent=isAudio?'点击加载演示音频':'点击加载演示视频';
+  document.getElementById('mediaGuidance').innerHTML='<strong>演示模式：</strong>使用内置样例体验字幕、智能方案和导出流程；不会读取或上传你的文件。';
+}
+
+function loadStaticDemo(){
+  const isAudio=state.mode==='audio',size=isAudio?38*1024*1024:286*1024*1024;
+  state.smartVideo={name:isAudio?'演示播客音频.mp3':'演示播客视频.mp4',size,type:isAudio?'audio/mpeg':'video/mp4'};
+  state.smartDuration=144;state.activeProjectId=null;state.activeTranscript='';state.activeSegments=[];state.selectedSmartProposalIndex=null;
+  document.getElementById('smartFileName').textContent=state.smartVideo.name;
+  document.getElementById('smartUpload').classList.add('has-file');
+  document.getElementById('smartFileMeta').style.display='flex';
+  document.getElementById('smartFileSize').textContent='文件 '+formatFileSize(size);
+  document.getElementById('smartFileDuration').textContent='时长 2分24秒';
+  document.getElementById('smartFileEta').textContent='演示数据已准备';
+  document.getElementById('smartStatus').textContent='演示素材已加载，可以模拟生成字幕';
+  document.getElementById('mediaSubtitleStart').disabled=false;
+  document.getElementById('videoChoiceStep').style.display='none';
+  document.getElementById('proposalStep').style.display='none';
+  document.getElementById('proposalReviewStep').style.display='none';
+  document.getElementById('smartResult').style.display='none';
+  toast('演示素材已加载','success');
+}
+
+async function runStaticTranscriptionDemo(){
+  const btn=document.getElementById('mediaSubtitleStart'),status=document.getElementById('smartStatus');
+  btn.disabled=true;btn.textContent='正在生成字幕';status.innerHTML='<span class="spinner"></span> 正在模拟本地 Whisper 转写…';
+  await demoDelay(700);
+  state.activeProjectId='static-demo';state.activeSourceKind=state.mode==='audio'?'audio':'video';state.activeTranscript=buildStaticDemoSrt();state.activeSegments=STATIC_DEMO_SEGMENTS.map(segment=>({...segment}));
+  state.audioCuts=[{start:22,end:29,reason:'口癖较多'},{start:32,end:40,reason:'重复表达'},{start:98,end:107,reason:'观点重复'}];
+  state.aiChannels={local:{enabled:false,available:false,models:[],message:'静态演示不连接本机模型'},api:{configured:true,available:true,model:'演示 AI',models:['演示 AI'],base_url:'',message:'演示模式已准备智能内容分析'}};
+  state.aiProviderPreference='api';renderAiChannels();
+  document.getElementById('aiApiSmartConfig').style.display='none';
+  document.getElementById('videoChoiceStep').style.display='block';
+  btn.disabled=false;btn.textContent='重新模拟字幕';status.textContent='已生成 12 段演示字幕，请选择智能剪辑或精简剪辑';
+  document.getElementById('videoChoiceStep').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+async function runStaticSmartAnalysis(){
+  const status=document.getElementById('smartStatus'),button=document.getElementById('smartAnalyzeButton');
+  button.disabled=true;status.innerHTML='<span class="spinner"></span> 演示 AI 正在理解完整内容…';
+  await demoDelay(700);
+  renderProposals(STATIC_DEMO_PROPOSALS,{topic:'播客素材的高效剪辑流程',summary:'从自动字幕、内容判断到音视频同步导出，展示一套本地播客剪辑工作流。',audience:'播客创作者、视频编辑和需要快速整理访谈内容的用户'});
+  document.getElementById('videoChoiceStep').style.display='none';
+  status.textContent='演示 AI 已生成 3 个方案，请选择一个查看字幕';button.disabled=false;
+  document.getElementById('proposalStep').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+async function runStaticRenderDemo(){
+  const proposal=state.smartProposals?.[state.selectedSmartProposalIndex];
+  if(!proposal){toast('请先选择并核对一个方案','error');return}
+  const button=document.getElementById('confirmSmartProposalButton'),status=document.getElementById('smartResultStatus');
+  button.disabled=true;button.textContent='正在模拟生成';document.getElementById('smartResult').style.display='block';document.getElementById('smartAudioDownload').style.display='none';document.getElementById('smartVideoDownload').style.display='none';status.innerHTML='<span class="spinner"></span> 正在模拟 FFmpeg 按确认时间点生成结果…';
+  document.getElementById('smartResult').scrollIntoView({behavior:'smooth',block:'start'});
+  await demoDelay(900);
+  document.getElementById('smartAudioDownload').style.display='inline-flex';
+  document.getElementById('smartVideoDownload').style.display=state.activeSourceKind==='video'?'inline-flex':'none';
+  status.textContent=state.activeSourceKind==='video'?'演示完成：音频和视频已按同一套时间点生成':'演示完成：剪辑音频已生成';
+  button.disabled=false;button.textContent='重新模拟生成';toast('智能剪辑演示完成','success');
+}
+
 function init(){
   applyTheme();
-  if(location.hostname.endsWith('github.io')){
+  if(isStaticDemo()){
+    document.body.classList.add('static-demo');
     document.title='SRT Cutter - 静态演示';
-    document.querySelector('.mode-note').innerHTML='静态演示页面，仅用于预览界面 · <a href="https://github.com/chenzhenzhen2077/srtcut" target="_blank" rel="noopener">下载 Mac 本地版</a>';
+    document.querySelector('.mode-note').innerHTML='可交互的功能模拟，不会上传文件 · <a href="https://github.com/chenzhenzhen2077/srtcut" target="_blank" rel="noopener">下载 Mac 本地版</a>';
   }
   document.getElementById('modeChooser').classList.remove('hidden');
   document.getElementById('smartWorkspace').classList.add('hidden');
@@ -480,7 +573,9 @@ function init(){
   const k=localStorage.getItem('srt_cutter_api_key');if(k)document.getElementById('aiApiKey').value=k;
   const p=localStorage.getItem('srt_cutter_ai_provider')||'openai';
   document.getElementById('aiProvider').value=p;
-  updateAiProvider();checkFFmpeg();checkTranscription();
+  updateAiProvider();
+  if(isStaticDemo())document.getElementById('ffmpegStatus').innerHTML='<span class="ok">● FFmpeg 导出演示就绪</span>';
+  else{checkFFmpeg();checkTranscription()}
   const tz=document.getElementById('transcribeZone');
   if(tz){tz.addEventListener('dragover',e=>{e.preventDefault();tz.classList.add('dragover')});tz.addEventListener('dragleave',()=>tz.classList.remove('dragover'));tz.addEventListener('drop',e=>{e.preventDefault();tz.classList.remove('dragover');if(e.dataTransfer.files[0])handleTranscribeMedia(e.dataTransfer.files[0])})}
   const az=document.getElementById('audioUpload');
@@ -490,7 +585,7 @@ function init(){
   const sz=document.getElementById('smartUpload');
   sz.addEventListener('dragover',e=>{e.preventDefault();sz.classList.add('dragover')});
   sz.addEventListener('dragleave',()=>sz.classList.remove('dragover'));
-  sz.addEventListener('drop',e=>{e.preventDefault();sz.classList.remove('dragover');if(e.dataTransfer.files[0])handlePodcastMediaWithSizeCheck(e.dataTransfer.files[0])});
+  sz.addEventListener('drop',e=>{e.preventDefault();sz.classList.remove('dragover');if(isStaticDemo()){loadStaticDemo();return}if(e.dataTransfer.files[0])handlePodcastMediaWithSizeCheck(e.dataTransfer.files[0])});
   document.querySelectorAll('[name="podcastOutput"]').forEach(el=>el.addEventListener('change',updatePodcastOutputUi));
 }
 
@@ -499,7 +594,7 @@ function toggleTheme(){state.theme=state.theme==='light'?'dark':'light';localSto
 function selectMode(mode){state.mode=mode;configureMediaWorkspace(mode);document.getElementById('modeChooser').classList.add('hidden');document.getElementById('smartWorkspace').classList.remove('hidden');document.getElementById('audioWorkspace').classList.add('hidden');toast(mode==='video'?'🎬 已进入视频播客剪辑':'🎧 已进入纯音频播客剪辑','success')}
 function showModeChooser(){document.getElementById('modeChooser').classList.remove('hidden');document.getElementById('smartWorkspace').classList.add('hidden');document.getElementById('audioWorkspace').classList.add('hidden')}
 function returnFromFine(){if(state.activeProjectId&&state.activeTranscript){state.mode=state.activeSourceKind;document.getElementById('modeChooser').classList.add('hidden');document.getElementById('smartWorkspace').classList.remove('hidden');toast('已返回分析方式页面','success');return}showModeChooser()}
-function configureMediaWorkspace(mode){const isAudio=mode==='audio';state.smartVideo=null;state.smartDuration=null;state.activeProjectId=null;state.activeSourceKind=mode;state.activeTranscript='';state.activeSegments=[];state.aiAvailable=false;state.aiProvider=null;state.aiModel=null;state.aiMessage='';state.aiChannels={local:null,api:null};state.aiProviderPreference=null;state.selectedSmartProposalIndex=null;renderAiChannels();document.getElementById('mediaWorkspaceTitle').textContent=isAudio?'🎧 纯音频播客剪辑':'🎬 视频播客同步剪辑';document.getElementById('mediaWorkspaceSubtitle').textContent='上传素材并生成字幕，再选择智能剪辑或精简剪辑';document.getElementById('mediaUploadTitle').textContent=isAudio?'1. 上传音频素材':'1. 上传播客视频';document.getElementById('mediaUploadIcon').textContent=isAudio?'🎙':'🎬';document.getElementById('mediaUploadHint').textContent=isAudio?'点击或拖拽上传 MP3、WAV、M4A':'点击或拖拽上传视频';document.getElementById('mediaGuidance').innerHTML=isAudio?'<strong>上传建议：</strong>默认单文件上限 2GB；推荐单个音频不超过 2 小时。较长节目建议按章节分段处理。':'<strong>上传建议：</strong>默认单文件上限 2GB；推荐单个视频不超过 500MB、10 分钟。超过 1GB 建议先切成 5-10 分钟片段处理。';document.getElementById('smartInput').accept=isAudio?'audio/*,.m4a,.flac,.ogg':'video/*';document.getElementById('smartInput').value='';document.getElementById('smartUpload').classList.remove('has-file');document.getElementById('smartFileName').textContent='';document.getElementById('smartFileMeta').style.display='none';document.getElementById('smartStatus').textContent='准备开始';document.getElementById('mediaSubtitleStart').disabled=true;document.getElementById('mediaSubtitleStart').textContent='生成字幕';document.getElementById('videoChoiceStep').style.display='none';document.getElementById('proposalStep').style.display='none';document.getElementById('proposalReviewStep').style.display='none';document.getElementById('smartResult').style.display='none'}
+function configureMediaWorkspace(mode){const isAudio=mode==='audio';state.smartVideo=null;state.smartDuration=null;state.activeProjectId=null;state.activeSourceKind=mode;state.activeTranscript='';state.activeSegments=[];state.aiAvailable=false;state.aiProvider=null;state.aiModel=null;state.aiMessage='';state.aiChannels={local:null,api:null};state.aiProviderPreference=null;state.selectedSmartProposalIndex=null;renderAiChannels();document.getElementById('mediaWorkspaceTitle').textContent=isAudio?'🎧 纯音频播客剪辑':'🎬 视频播客同步剪辑';document.getElementById('mediaWorkspaceSubtitle').textContent='上传素材并生成字幕，再选择智能剪辑或精简剪辑';document.getElementById('mediaUploadTitle').textContent=isAudio?'1. 上传音频素材':'1. 上传播客视频';document.getElementById('mediaUploadIcon').textContent=isAudio?'🎙':'🎬';document.getElementById('mediaUploadHint').textContent=isAudio?'点击或拖拽上传 MP3、WAV、M4A':'点击或拖拽上传视频';document.getElementById('mediaGuidance').innerHTML=isAudio?'<strong>上传建议：</strong>默认单文件上限 2GB；推荐单个音频不超过 2 小时。较长节目建议按章节分段处理。':'<strong>上传建议：</strong>默认单文件上限 2GB；推荐单个视频不超过 500MB、10 分钟。超过 1GB 建议先切成 5-10 分钟片段处理。';document.getElementById('smartInput').accept=isAudio?'audio/*,.m4a,.flac,.ogg':'video/*';document.getElementById('smartInput').value='';document.getElementById('smartInput').disabled=false;document.getElementById('smartUpload').onclick=()=>document.getElementById('smartInput').click();document.getElementById('smartUpload').classList.remove('has-file');document.getElementById('smartFileName').textContent='';document.getElementById('smartFileMeta').style.display='none';document.getElementById('smartStatus').textContent='准备开始';document.getElementById('mediaSubtitleStart').disabled=true;document.getElementById('mediaSubtitleStart').textContent='生成字幕';document.getElementById('videoChoiceStep').style.display='none';document.getElementById('proposalStep').style.display='none';document.getElementById('proposalReviewStep').style.display='none';document.getElementById('smartResult').style.display='none';if(isStaticDemo())configureStaticDemoUpload()}
 function handleAudioFile(file){if(!file)return;const ext=file.name.split('.').pop().toLowerCase();const videoExt=['mp4','mov','mkv','avi','webm'];if(file.type.startsWith('video/')||videoExt.includes(ext)){toast('这是视频文件，请从首页进入“视频播客同步剪辑”','error');return}state.audioFile=file;state.audioSourceKind='audio';state.audioProjectId=null;state.audioCuts=[];state.confirmedAudioCuts=[];state.podcastDownloads={};document.getElementById('audioFileName').textContent=file.name+' · '+formatFileSize(file.size)+' · 仅生成音频';document.getElementById('audioUpload').classList.add('has-file');document.getElementById('audioStart').disabled=false;document.getElementById('audioSuggestionsStep').style.display='none';document.getElementById('audioResultStep').style.display='none';document.getElementById('audioStatus').textContent='音频已选择，可以开始分析';document.querySelector('[name="podcastOutput"][value="audio"]').checked=true;updatePodcastOutputUi()}
 function updatePodcastOutputUi(){const choice=document.querySelector('[name="podcastOutput"]:checked')?.value||'audio';document.getElementById('podcastQuality').style.display=choice==='audio'?'none':'flex'}
 async function startAudioAnalysis(){if(!state.audioFile)return;const status=document.getElementById('audioStatus'),btn=document.getElementById('audioStart');btn.disabled=true;status.innerHTML='<span class="spinner"></span> 正在把声音变成可检查的文字…';try{const form=new FormData();form.append('media',state.audioFile);form.append('model','small');const r=await fetch('/api/transcribe',{method:'POST',body:form});const d=await r.json();if(!r.ok)throw new Error(d.error||'字幕生成失败');state.audioJobId=d.job_id;pollAudioTranscription(d.job_id)}catch(e){btn.disabled=false;status.textContent='分析失败：'+e.message}}
@@ -538,6 +633,7 @@ function uploadMediaProject(form,onProgress){
 }
 async function startUnifiedTranscription(){
   if(!state.smartVideo)return;
+  if(isStaticDemo()){await runStaticTranscriptionDemo();return}
   const btn=document.getElementById('mediaSubtitleStart'),status=document.getElementById('smartStatus');
   btn.disabled=true;btn.textContent='正在生成字幕';
   try{
@@ -726,6 +822,7 @@ function pollUnifiedTranscription(projectId){
 }
 async function startSmartAnalysis(){
   if(!state.activeProjectId)return;
+  if(isStaticDemo()){await runStaticSmartAnalysis();return}
   const provider=state.aiProviderPreference||state.aiProvider;
   const channel=state.aiChannels?.[provider];
   if(!channel?.available){toast(channel?.message||state.aiMessage||'智能内容分析暂时不可用，请使用精简剪辑','error');return}
@@ -771,6 +868,7 @@ function reviewSmartProposal(index){
 }
 function backToSmartProposals(){state.selectedSmartProposalIndex=null;document.getElementById('proposalReviewStep').style.display='none';document.getElementById('smartResult').style.display='none';document.getElementById('proposalStep').scrollIntoView({behavior:'smooth',block:'start'})}
 async function confirmSmartProposal(){
+  if(isStaticDemo()){await runStaticRenderDemo();return}
   const index=state.selectedSmartProposalIndex,proposal=Number.isInteger(index)?state.smartProposals?.[index]:null;
   if(!proposal){toast('请先选择并核对一个方案','error');return}
   const button=document.getElementById('confirmSmartProposalButton'),status=document.getElementById('smartResultStatus'),duration=state.activeSegments.length?state.activeSegments[state.activeSegments.length-1].end:proposal.end,cuts=[...(proposal.cuts||[])];
@@ -781,7 +879,7 @@ async function confirmSmartProposal(){
   try{const r=await fetch('/api/podcast/render',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({project_id:state.activeProjectId,cuts,outputs,quality:'medium',allow_unchanged:true})});const d=await r.json();if(!r.ok)throw new Error(d.error||'生成失败');document.getElementById('smartResult').scrollIntoView({behavior:'smooth',block:'start'});pollSmartRender(state.activeProjectId)}catch(e){button.disabled=false;button.textContent='确认字幕，开始生成';status.textContent='生成失败：'+e.message;toast('❌ '+e.message,'error')}
 }
 async function pollSmartRender(projectId){const status=document.getElementById('smartResultStatus'),iv=setInterval(async()=>{try{const d=await (await fetch('/api/podcast/progress/'+projectId)).json();if(d.status==='running')status.innerHTML='<span class="spinner"></span> '+(d.message||'生成中…');else if(d.status==='done'){clearInterval(iv);document.getElementById('smartAudioDownload').style.display=d.outputs?.audio?.status==='done'?'inline-flex':'none';document.getElementById('smartVideoDownload').style.display=d.outputs?.video?.status==='done'?'inline-flex':'none';status.textContent='智能方案已生成完成，可以下载';toast('✅ 智能剪辑完成','success')}else if(d.status==='error'){clearInterval(iv);status.textContent='生成失败：'+(d.error||'')}}catch(e){}},1000)}
-function downloadSmartResult(outputName){if(state.activeProjectId)window.open('/api/podcast/download/'+outputName+'/'+state.activeProjectId,'_blank')}
+function downloadSmartResult(outputName){if(isStaticDemo()){toast((outputName==='audio'?'音频':'视频')+'下载仅在 Mac 本地版提供','error');return}if(state.activeProjectId)window.open('/api/podcast/download/'+outputName+'/'+state.activeProjectId,'_blank')}
 
 function updateAiProvider(){
   const p=document.getElementById('aiProvider').value;
@@ -860,6 +958,11 @@ async function startAutoCut(){
   const cuts=state.segments.filter(seg=>state.cutSet.has(seg.id)).map(seg=>({start:seg.startMs/1000,end:seg.endMs/1000,reason:(seg._cutReasons||[]).join('; ')||'手动标记'})).filter(c=>c.end>c.start+0.1);
   if(!cuts.length){toast('没有有效的剪辑段','error');return}
   const banner=document.getElementById('processingBanner');banner.classList.add('active');document.getElementById('procSpinner').style.display='inline-block';document.getElementById('btnDownload').style.display='none';document.getElementById('btnDownloadFineVideo').style.display='none';document.getElementById('btnDownloadFineAudio').style.display='none';document.getElementById('procBar').style.width='0%';document.getElementById('procInfo').innerHTML='<strong>正在提交…</strong>';document.getElementById('btnCut').disabled=true;
+  if(isStaticDemo()){
+    const demoOutputs=state.fineSourceKind==='audio'?['audio']:(document.getElementById('fineSyncAudio').checked?['video','audio']:['video']);
+    document.getElementById('procBar').style.width='45%';document.getElementById('procInfo').innerHTML='<strong>模拟剪辑中…</strong> 正在应用 '+cuts.length+' 个删除时间段';
+    await demoDelay(900);finishFineRender(demoOutputs);document.getElementById('procInfo').innerHTML='<strong>模拟剪辑完成！</strong> 本地版会在这里提供真实文件下载';return;
+  }
   try{
     if(state.fineProjectId){
       const outputs=state.fineSourceKind==='audio'?['audio']:(document.getElementById('fineSyncAudio').checked?['video','audio']:['video']);
@@ -878,8 +981,8 @@ function pollFineProjectRender(projectId,outputs){const iv=setInterval(async()=>
 function pollLegacyVideoRender(jobId){const iv=setInterval(async()=>{try{const d=await (await fetch('/api/progress/'+jobId)).json();if(d.status==='running'){document.getElementById('procBar').style.width=d.progress+'%';document.getElementById('procInfo').innerHTML='<strong>剪辑中…</strong> '+(d.message||'')}else if(d.status==='done'){clearInterval(iv);finishFineRender('视频')}else if(d.status==='error'){clearInterval(iv);failFineRender(d.error)}}catch(e){}},1000)}
 function finishFineRender(result){const outputs=Array.isArray(result)?result:null,label=outputs?(outputs.includes('video')&&outputs.includes('audio')?'视频和音频':outputs.includes('video')?'视频':'音频'):result;document.getElementById('procBar').style.width='100%';document.getElementById('procSpinner').style.display='none';document.getElementById('btnDownload').style.display=outputs?'none':'inline-flex';document.getElementById('btnDownloadFineVideo').style.display=outputs?.includes('video')?'inline-flex':'none';document.getElementById('btnDownloadFineAudio').style.display=outputs?.includes('audio')?'inline-flex':'none';document.getElementById('procInfo').innerHTML='<strong>剪辑完成！</strong> 下载'+label;document.getElementById('btnCut').disabled=false;toast(label+'剪辑完成','success')}
 function failFineRender(error){document.getElementById('procSpinner').style.display='none';document.getElementById('procInfo').innerHTML='<strong>处理失败</strong> '+(error||'');document.getElementById('btnCut').disabled=false}
-function downloadResult(){if(state.fineDownloadUrl)window.open(state.fineDownloadUrl,'_blank');else if(state.jobId)window.open('/api/download/'+state.jobId,'_blank')}
-function downloadFineOutput(output){const url=state.fineDownloadUrls[output];if(url)window.open(url,'_blank')}
+function downloadResult(){if(isStaticDemo()){toast('真实文件下载仅在 Mac 本地版提供','error');return}if(state.fineDownloadUrl)window.open(state.fineDownloadUrl,'_blank');else if(state.jobId)window.open('/api/download/'+state.jobId,'_blank')}
+function downloadFineOutput(output){if(isStaticDemo()){toast((output==='audio'?'音频':'视频')+'下载仅在 Mac 本地版提供','error');return}const url=state.fineDownloadUrls[output];if(url)window.open(url,'_blank')}
 
 function openExportModal(){const cutSegs=state.segments.filter(seg=>state.cutSet.has(seg.id));if(!cutSegs.length){toast('还没有标记任何剪辑段','error');return}const t=cutSegs.reduce((s,seg)=>s+seg.durationMs,0),ts=state.segments.reduce((s,seg)=>s+seg.durationMs,0);let lines=['═══════════════════════════════════════','  剪辑清单 · SRT Cutter','  文件: '+(document.getElementById('fileName').textContent||'-'),'  生成: '+new Date().toLocaleString('zh-CN'),'═══════════════════════════════════════',''];cutSegs.forEach((seg,i)=>{const r=(seg._cutReasons||[]).join('; ')||[...new Set((seg._fillerMatches||[]).map(m=>m.word))].slice(0,3).join(',')||'手动标记';lines.push('  ✕ '+(i+1)+'. '+msToTc(seg.startMs)+' → '+msToTc(seg.endMs)+'  ['+(seg.durationMs/1000).toFixed(1)+'秒] '+r);lines.push('     "'+seg.text+'"');lines.push('')});lines.push('═══════════════════════════════════════');lines.push('  总删除: '+msToTimeStr(t)+' ('+(t/1000).toFixed(1)+'s)');lines.push('  总时长: '+msToTimeStr(ts));lines.push('  精简比: '+(t/ts*100).toFixed(1)+'%');lines.push('═══════════════════════════════════════');lines.push('');lines.push('操作指引：在剪映时间线上找到对应时间点剪切即可。');document.getElementById('exportText').value=lines.join('\n');document.getElementById('exportModalTitle').textContent='📋 导出剪辑单';document.getElementById('exportModalDesc').textContent='复制以下内容到剪映，按顺序手动剪切';document.getElementById('exportModal').classList.add('open')}
 function copyExport(){navigator.clipboard.writeText(document.getElementById('exportText').value);toast('📋 已复制','success')}
