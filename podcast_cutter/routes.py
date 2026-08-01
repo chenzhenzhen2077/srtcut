@@ -17,6 +17,7 @@ from .media import (
     normalize_cuts,
     run_ffmpeg_cut,
 )
+from .project import create_edit_decision, load_edit_decision, run_podcast_exports
 from .smart import generate_proposals, parse_srt, summarize_content
 from .speech import faster_whisper_available, transcribe_to_srt
 
@@ -60,6 +61,18 @@ def _audio_paths(job_id, extension=".mp3"):
         work_dir / f"{job_id}_audio_output.mp3",
         work_dir / f"{job_id}_audio_progress.json",
     )
+
+
+def _podcast_input_path(project_id, extension):
+    return Path(current_app.config["WORK_DIR"]) / f"{project_id}_podcast_input{extension}"
+
+
+def _find_podcast_input(project_id):
+    decision = load_edit_decision(current_app.config["WORK_DIR"], project_id)
+    if decision is None:
+        return None, None
+    source_path = Path(current_app.config["WORK_DIR"]) / decision["source"]["stored_name"]
+    return decision, source_path if source_path.is_file() else None
 
 
 def _is_valid_job_id(job_id):
@@ -282,6 +295,147 @@ def audio_download(job_id):
     if output_path.is_file():
         return send_file(str(output_path), as_attachment=True, download_name="剪辑后播客.mp3")
     return jsonify({"error": "音频未就绪"}), 404
+
+
+@api.post("/api/podcast/analyze")
+def analyze_podcast():
+    media = request.files.get("media") or request.files.get("audio")
+    if media is None:
+        return jsonify({"error": "请上传播客音频或视频"}), 400
+    try:
+        segments = json.loads(request.form.get("segments", "[]"))
+        threshold = float(request.form.get("silence_threshold", "1.5"))
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return jsonify({"error": "播客分析参数无效"}), 400
+    if not isinstance(segments, list) or not segments:
+        return jsonify({"error": "请先生成播客字幕"}), 400
+
+    original_name = Path(media.filename or "podcast.mp3").name
+    extension = Path(original_name).suffix.lower()
+    audio_extensions = {".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg"}
+    video_extensions = {".mp4", ".mov", ".mkv", ".avi", ".webm"}
+    if extension not in audio_extensions | video_extensions:
+        return jsonify({"error": "不支持的播客文件格式"}), 400
+
+    project_id = uuid.uuid4().hex[: current_app.config["JOB_ID_LENGTH"]]
+    source_path = _podcast_input_path(project_id, extension)
+    media.save(source_path)
+    suggestions = analyze_audio_segments(segments, threshold)
+    source_kind = "video" if extension in video_extensions else "audio"
+    create_edit_decision(
+        current_app.config["WORK_DIR"],
+        project_id,
+        source_path,
+        source_kind,
+        original_name,
+        segments,
+        suggestions,
+    )
+    return jsonify(
+        {
+            "project_id": project_id,
+            "job_id": project_id,
+            "source_kind": source_kind,
+            "can_export_video": source_kind == "video",
+            "suggestions": suggestions,
+            "suggestion_count": len(suggestions),
+        }
+    )
+
+
+@api.post("/api/podcast/render")
+def render_podcast():
+    try:
+        payload = request.get_json(force=True)
+        project_id = payload["project_id"]
+        cuts = normalize_cuts(
+            payload.get("cuts", []), max_cuts=current_app.config["MAX_CUTS"]
+        )
+        outputs = payload.get("outputs", ["audio"])
+        quality = payload.get("quality", "medium")
+    except (TypeError, KeyError, ValueError, json.JSONDecodeError):
+        return jsonify({"error": "播客导出参数无效"}), 400
+    if not _is_valid_job_id(project_id):
+        return jsonify({"error": "项目 ID 无效"}), 400
+    if not cuts:
+        return jsonify({"error": "请至少选择一处需要删除的片段"}), 400
+    if not isinstance(outputs, list) or not outputs or any(
+        output not in {"audio", "video"} for output in outputs
+    ):
+        return jsonify({"error": "请选择要生成的文件"}), 400
+    outputs = list(dict.fromkeys(outputs))
+    if quality not in {"high", "medium", "fast"}:
+        return jsonify({"error": "输出质量参数无效"}), 400
+
+    decision, source_path = _find_podcast_input(project_id)
+    if decision is None or source_path is None:
+        return jsonify({"error": "播客项目已过期"}), 404
+    if "video" in outputs and decision["source"]["kind"] != "video":
+        return jsonify({"error": "只上传了音频，无法生成视频"}), 400
+    ffmpeg, ffprobe = _find_tools()
+    if not ffmpeg or not ffprobe:
+        return jsonify({"error": "音视频处理功能不可用"}), 400
+
+    work_dir = Path(current_app.config["WORK_DIR"])
+    progress_path = work_dir / f"{project_id}_podcast_progress.json"
+    progress_path.unlink(missing_ok=True)
+    worker = threading.Thread(
+        target=run_podcast_exports,
+        args=(
+            ffmpeg,
+            ffprobe,
+            work_dir,
+            project_id,
+            source_path,
+            cuts,
+            outputs,
+            quality,
+        ),
+        daemon=True,
+        name=f"podcast-render-{project_id}",
+    )
+    worker.start()
+    return jsonify({"project_id": project_id, "outputs": outputs})
+
+
+@api.get("/api/podcast/progress/<project_id>")
+def podcast_progress(project_id):
+    if not _is_valid_job_id(project_id):
+        return jsonify({"error": "项目 ID 无效"}), 400
+    progress_path = (
+        Path(current_app.config["WORK_DIR"]) / f"{project_id}_podcast_progress.json"
+    )
+    if progress_path.is_file():
+        try:
+            return jsonify(json.loads(progress_path.read_text(encoding="utf-8")))
+        except (OSError, json.JSONDecodeError):
+            return jsonify({"status": "running", "progress": 0})
+    return jsonify({"status": "pending", "progress": 0})
+
+
+@api.get("/api/podcast/project/<project_id>")
+def podcast_project(project_id):
+    if not _is_valid_job_id(project_id):
+        return jsonify({"error": "项目 ID 无效"}), 400
+    decision = load_edit_decision(current_app.config["WORK_DIR"], project_id)
+    if decision is None:
+        return jsonify({"error": "播客项目不存在"}), 404
+    return jsonify(decision)
+
+
+@api.get("/api/podcast/download/<output_name>/<project_id>")
+def podcast_download(output_name, project_id):
+    if not _is_valid_job_id(project_id) or output_name not in {"audio", "video"}:
+        return jsonify({"error": "下载参数无效"}), 400
+    suffix = ".mp3" if output_name == "audio" else ".mp4"
+    output_path = (
+        Path(current_app.config["WORK_DIR"])
+        / f"{project_id}_podcast_{output_name}{suffix}"
+    )
+    if not output_path.is_file() or output_path.stat().st_size <= 0:
+        return jsonify({"error": "文件尚未生成"}), 404
+    download_name = "剪辑后播客.mp3" if output_name == "audio" else "同步剪辑视频.mp4"
+    return send_file(str(output_path), as_attachment=True, download_name=download_name)
 
 
 @api.post("/api/smart/analyze")

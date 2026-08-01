@@ -86,3 +86,44 @@ def test_audio_analyze_returns_suggestions(tmp_path):
     data = response.get_json()
     assert data["job_id"]
     assert len(data["suggestions"]) == 2
+
+
+def test_podcast_analyze_creates_shared_edit_decision(tmp_path):
+    app = create_app({"TESTING": True, "WORK_DIR": tmp_path / "work", "BIN_DIR": tmp_path / "bin"})
+    client = app.test_client()
+    segments = '[{"start":0,"end":2,"text":"开始"},{"start":5,"end":6,"text":"嗯"}]'
+    response = client.post(
+        "/api/podcast/analyze",
+        data={"media": (io.BytesIO(b"fake-video"), "sample.mp4"), "segments": segments},
+        content_type="multipart/form-data",
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["source_kind"] == "video"
+    project = client.get(f"/api/podcast/project/{data['project_id']}")
+    assert project.status_code == 200
+    decision = project.get_json()
+    assert decision["source"]["kind"] == "video"
+    assert decision["suggested_cuts"][0]["start"] == 2.25
+
+
+def test_podcast_render_validates_output_for_audio_only_project(tmp_path):
+    app = create_app({"TESTING": True, "WORK_DIR": tmp_path / "work", "BIN_DIR": tmp_path / "bin"})
+    client = app.test_client()
+    segments = '[{"start":0,"end":2,"text":"开始"},{"start":5,"end":6,"text":"嗯"}]'
+    response = client.post(
+        "/api/podcast/analyze",
+        data={"media": (io.BytesIO(b"fake-audio"), "sample.mp3"), "segments": segments},
+        content_type="multipart/form-data",
+    )
+    project_id = response.get_json()["project_id"]
+    render = client.post(
+        "/api/podcast/render",
+        json={
+            "project_id": project_id,
+            "cuts": [{"start": 2.25, "end": 4.75}],
+            "outputs": ["video"],
+        },
+    )
+    assert render.status_code == 400
+    assert "只上传了音频" in render.get_json()["error"]
