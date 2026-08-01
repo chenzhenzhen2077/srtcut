@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SRT Cutter — 播客剪辑辅助工具</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#121318;--bg2:#1a1c23;--bg3:#22242e;--bg4:#2a2d3a;--text:#e2e4ea;--text2:#9ea0ae;--text3:#6b6e7e;--accent:#6c8cff;--accent2:#4a6cd4;--danger:#ff5c6c;--danger-bg:#2a1520;--warn:#ffb347;--warn-bg:#2d2215;--ok:#4caf80;--radius:8px;--radius-sm:4px;--font:-apple-system,BlinkMacSystemFont,"SF Pro","Segoe UI",sans-serif;--mono:"SF Mono","Fira Code","Cascadia Code",monospace;--sidebar-w:280px;--cutpanel-w:300px;--header-h:48px}
+html,body{height:100%;background:var(--bg);color:var(--text);font:14px/1.6 var(--font)}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--text3);border-radius:3px}
+.app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.header{height:var(--header-h);display:flex;align-items:center;gap:12px;padding:0 20px;background:var(--bg2);border-bottom:1px solid var(--bg4);flex-shrink:0}
+.header h1{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+.header h1 small{font-size:10px;font-weight:400;color:var(--text2)}
+.header .badge{font-size:9px;background:var(--accent);color:#fff;border-radius:99px;padding:0 7px;line-height:18px;font-weight:500}
+.header-actions{margin-left:auto;display:flex;gap:6px;align-items:center}
+.body{display:flex;flex:1;min-height:0}
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--bg2);border-right:1px solid var(--bg4);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-scroll{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--bg3);border-radius:var(--radius);padding:10px 12px}
+.card-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:8px}
+.card-row{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px}
+.card-row label{font-size:11px;color:var(--text2)}
+.card-row input[type=number]{width:64px;background:var(--bg4);color:var(--text);border:1px solid var(--bg4);border-radius:var(--radius-sm);padding:2px 6px;font:11px var(--mono);text-align:center}
+.card-row select{background:var(--bg4);color:var(--text);border:1px solid var(--bg4);border-radius:var(--radius-sm);padding:2px 6px;font:11px var(--font)}
+.card-row input[type=checkbox]{accent-color:var(--accent)}
+.upload-area{border:2px dashed var(--bg4);border-radius:var(--radius);padding:24px 12px;text-align:center;cursor:pointer;transition:all .2s}
+.upload-area:hover,.upload-area.dragover{border-color:var(--accent);background:var(--bg3)}
+.upload-area .icon{font-size:24px;color:var(--text3);margin-bottom:4px}
+.upload-area p{font-size:11px;color:var(--text2)}
+.upload-area .filename{font-size:12px;color:var(--accent);font-weight:500;margin-top:3px;display:none}
+.upload-area.has-file .filename{display:block}
+.upload-area.has-file .hint{display:none}
+input[type=file]{display:none}
+.filler-tags{display:flex;flex-wrap:wrap;gap:3px;max-height:120px;overflow-y:auto}
+.filler-tag{display:inline-flex;align-items:center;gap:2px;background:var(--bg4);border-radius:99px;padding:1px 6px 1px 8px;font-size:11px;color:var(--text);cursor:pointer;transition:all .12s;user-select:none}
+.filler-tag.active{background:var(--danger-bg);color:var(--danger)}
+.filler-tag .del{opacity:.4;font-size:13px;line-height:1;margin-left:2px}
+.filler-tag .del:hover{opacity:1}
+.filler-add{display:flex;gap:4px;margin-top:6px}
+.filler-add input{flex:1;background:var(--bg4);color:var(--text);border:1px solid var(--bg4);border-radius:var(--radius-sm);padding:2px 8px;font:11px var(--font)}
+.filler-add input:focus{border-color:var(--accent);outline:none}
+.filler-add button{background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:2px 8px;font-size:11px;cursor:pointer;line-height:1.8}
+.filler-add button:hover{background:var(--accent2)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:5px 12px;border-radius:var(--radius-sm);border:none;font:12px var(--font);cursor:pointer;transition:all .12s;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-primary:disabled{opacity:.4;cursor:default}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-danger:hover{background:#d94452}
+.btn-danger:disabled{opacity:.4;cursor:default}
+.btn-outline{background:transparent;color:var(--text2);border:1px solid var(--bg4)}
+.btn-outline:hover{color:var(--text);border-color:var(--text3)}
+.btn-small{font-size:10px;padding:3px 8px}
+.btn-full{width:100%}
+.btn-success{background:var(--ok);color:#fff}
+.btn-success:hover{background:#3da06a}
+.center{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+.timeline-toolbar{display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--bg2);border-bottom:1px solid var(--bg4);flex-shrink:0}
+.timeline-stats{display:flex;gap:12px;align-items:center;background:var(--bg3);padding:4px 12px;border-radius:var(--radius-sm);font-size:10px}
+.timeline-stats .stat{color:var(--text3);white-space:nowrap}
+.timeline-stats .stat strong{color:var(--text2);font-weight:600}
+.timeline-stats .stat.danger strong{color:var(--danger)}
+.timeline-viewport{flex:1;overflow-y:auto;padding:8px 14px 120px}
+.segment{display:flex;gap:8px;padding:3px 8px;border-radius:var(--radius-sm);cursor:pointer;transition:all .08s;border-left:3px solid transparent;margin-bottom:1px}
+.segment:hover{background:var(--bg3)}
+.segment.marked{border-left-color:var(--danger);background:var(--danger-bg)}
+.segment.gap-warning{border-left-color:var(--warn);background:var(--warn-bg)}
+.segment .time{font:10px/1.4 var(--mono);color:var(--text3);width:130px;flex-shrink:0;padding-top:2px;user-select:none}
+.segment .time .dur{color:var(--text2);font-weight:500}
+.segment .text{flex:1;font-size:12px;line-height:1.5;min-width:0;word-break:break-word}
+.segment .text mark{background:var(--danger);color:#fff;border-radius:2px;padding:0 2px}
+.segment .actions{flex-shrink:0;display:flex;align-items:center;gap:3px;opacity:0;transition:opacity .12s}
+.segment:hover .actions{opacity:1}
+.segment .actions button{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;line-height:1;padding:1px 3px;border-radius:2px}
+.segment .actions button:hover{color:var(--danger);background:var(--bg4)}
+.segment .actions .btn-time:hover{color:var(--accent)}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:8px;text-align:center;padding:40px}
+.empty-state .icon{font-size:40px;opacity:.3}
+.empty-state h2{font-size:16px;font-weight:500;color:var(--text2)}
+.empty-state p{font-size:12px;max-width:340px}
+.cut-panel{width:var(--cutpanel-w);min-width:var(--cutpanel-w);background:var(--bg2);border-left:1px solid var(--bg4);display:flex;flex-direction:column;overflow:hidden}
+.cut-panel-header{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bg4);flex-shrink:0}
+.cut-panel-header h3{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)}
+.cut-panel-header .count{margin-left:auto;font-size:10px;color:var(--text2)}
+.cut-panel-scroll{flex:1;overflow-y:auto;padding:6px}
+.cut-item{display:flex;flex-direction:column;gap:1px;padding:5px 8px;margin-bottom:3px;background:var(--bg3);border-radius:var(--radius-sm);border-left:3px solid var(--danger);font-size:11px;cursor:pointer;transition:background .1s}
+.cut-item:hover{background:var(--bg4)}
+.cut-item .cut-time{font:10px var(--mono);color:var(--danger)}
+.cut-item .cut-reason{color:var(--text2);font-size:10px}
+.cut-empty{text-align:center;color:var(--text3);font-size:11px;padding:28px 8px}
+.cut-total{padding:8px 12px;border-top:1px solid var(--bg4);display:flex;gap:12px;font-size:11px;flex-shrink:0}
+.cut-total .stat{color:var(--text2)}
+.cut-total .stat strong{color:var(--text)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border-radius:var(--radius);padding:20px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto}
+.modal h2{font-size:15px;margin-bottom:6px}
+.modal p{font-size:12px;color:var(--text2);margin-bottom:12px}
+.modal textarea{width:100%;min-height:180px;background:var(--bg4);color:var(--text);border:1px solid var(--bg4);border-radius:var(--radius-sm);padding:10px;font:11px/1.5 var(--mono);resize:vertical}
+.modal textarea:focus{border-color:var(--accent);outline:none}
+.modal .modal-actions{display:flex;gap:6px;margin-top:10px;justify-content:flex-end}
+.modal .ai-config{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.modal .ai-config label{font-size:11px;color:var(--text2);white-space:nowrap}
+.modal .ai-config input,.modal .ai-config select{background:var(--bg4);color:var(--text);border:1px solid var(--bg4);border-radius:var(--radius-sm);padding:3px 8px;font:11px var(--font)}
+.modal .ai-config input:focus{border-color:var(--accent);outline:none}
+.modal .ai-config input[type=password]{flex:1;min-width:100px}
+.modal .ai-config select{min-width:90px}
+.modal .ai-config input[type=text]{flex:1;min-width:120px}
+.toast-container{position:fixed;bottom:16px;right:16px;z-index:200;display:flex;flex-direction:column;gap:4px;pointer-events:none}
+.toast{background:var(--bg3);border:1px solid var(--bg4);border-radius:var(--radius);padding:6px 12px;font-size:11px;color:var(--text);box-shadow:0 4px 12px rgba(0,0,0,.4);animation:slideIn .18s ease-out;pointer-events:auto}
+.toast.error{border-color:var(--danger)}
+.toast.success{border-color:var(--ok)}
+@keyframes slideIn{from{transform:translateY(8px);opacity:0}}
+.progress-bar-wrap{width:100%;height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;flex-shrink:0}
+.progress-bar-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s;width:0%}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--text3);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.video-upload-zone{border:1px dashed var(--bg4);border-radius:var(--radius-sm);padding:14px 8px;text-align:center;cursor:pointer;transition:all .2s;margin-top:4px}
+.video-upload-zone:hover{border-color:var(--accent);background:var(--bg3)}
+.video-upload-zone .icon{font-size:20px;color:var(--text3)}
+.video-upload-zone p{font-size:10px;color:var(--text2)}
+.video-upload-zone .vfilename{font-size:11px;color:var(--accent);margin-top:2px;display:none}
+.video-upload-zone.has-file .vfilename{display:block}
+.video-upload-zone.has-file .vhint{display:none}
+.ffmpeg-status{font-size:10px;display:flex;align-items:center;gap:4px;margin-top:4px}
+.ffmpeg-status .ok{color:var(--ok)}
+.ffmpeg-status .fail{color:var(--danger)}
+.processing-banner{display:none;padding:10px 14px;background:var(--bg3);border-top:1px solid var(--bg4);gap:12px;align-items:center;flex-shrink:0}
+.processing-banner.active{display:flex}
+.processing-banner .info{font-size:11px;color:var(--text2)}
+.processing-banner .info strong{color:var(--text)}
+@media(max-width:960px){.sidebar{width:220px;min-width:220px}}
+@media(max-width:720px){.cut-panel{width:220px;min-width:220px}}
+@media(max-width:540px){.sidebar,.cut-panel{display:none}.header h1 small{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <h1>✂ SRT Cutter <small>播客剪辑辅助工具</small></h1>
+    <span class="badge">v2.1</span>
+    <div class="header-actions">
+      <button class="btn btn-outline btn-small" onclick="showQuickTour()">使用说明</button>
+      <button class="btn btn-outline btn-small" onclick="openExportModal()">📋 导出剪辑单</button>
+      <button class="btn btn-primary btn-small" onclick="openAiModal()">🤖 AI 分析</button>
+    </div>
+  </header>
+  <div class="body">
+    <aside class="sidebar">
+      <div class="sidebar-scroll">
+        <div class="card">
+          <div class="card-title">导入字幕 (SRT)</div>
+          <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+            <div class="icon">📄</div>
+            <p class="hint">拖拽或点击选择 SRT</p>
+            <p class="filename" id="fileName"></p>
+          </div>
+          <input type="file" id="fileInput" accept=".srt,.txt" onchange="handleFile(this.files[0])">
+        </div>
+        <div class="card">
+          <div class="card-title">口癖词 (点击切换)</div>
+          <div class="filler-tags" id="fillerTags"></div>
+          <div class="filler-add">
+            <input type="text" id="fillerInput" placeholder="添加口癖…" onkeydown="if(event.key==='Enter')addFiller()">
+            <button onclick="addFiller()">+</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">扫描设置</div>
+          <div class="card-row"><label>静默检测</label><input type="number" id="silenceThreshold" value="1.5" min="0" max="10" step="0.1"></div>
+          <div class="card-row"><label>检测重复词</label><input type="checkbox" id="highlightRepeat" checked></div>
+        </div>
+        <button class="btn btn-danger btn-full btn-small" onclick="autoDetectAll()" disabled id="btnAuto">🔍 一键扫描口癖</button>
+        <button class="btn btn-outline btn-full btn-small" onclick="clearAll()" disabled id="btnClear">🗑 清除标记</button>
+        <hr style="border:none;border-top:1px solid var(--bg4)">
+        <div class="card">
+          <div class="card-title">视频自动剪切</div>
+          <div class="video-upload-zone" id="videoZone" onclick="document.getElementById('videoInput').click()">
+            <div class="icon">🎬</div>
+            <p class="vhint">选择视频文件</p>
+            <p class="vfilename" id="videoFileName"></p>
+          </div>
+          <input type="file" id="videoInput" accept="video/*" onchange="handleVideo(this.files[0])">
+          <div class="card-row" style="margin-top:6px"><label>画质</label><select id="qualitySelect"><option value="high">高 (8Mbps)</option><option value="medium" selected>中 (5Mbps)</option><option value="fast">快 (3Mbps 720p)</option></select></div>
+          <div class="ffmpeg-status" id="ffmpegStatus"><span>检查 FFmpeg…</span></div>
+          <button class="btn btn-success btn-full btn-small" onclick="startAutoCut()" id="btnCut">✂ 自动剪切去口癖</button>
+        </div>
+      </div>
+    </aside>
+    <main class="center">
+      <div class="timeline-toolbar">
+        <div class="timeline-stats">
+          <span class="stat">时长 <strong id="stDur">--</strong></span>
+          <span class="stat">段 <strong id="stSegs">0</strong></span>
+          <span class="stat">口癖 <strong id="stFillers">0</strong></span>
+          <span class="stat">静默 <strong id="stGaps">0</strong></span>
+          <span class="stat danger">标记 ✕ <strong id="stCut">0</strong></span>
+        </div>
+        <div style="margin-left:auto"><button class="btn btn-outline btn-small" onclick="scrollToFirstCut()" disabled id="btnScrollCut">↓ 第一刀</button></div>
+      </div>
+      <div class="timeline-viewport" id="timelineViewport">
+        <div class="empty-state" id="emptyState">
+          <div class="icon">🎙</div>
+          <h2>导入 SRT 字幕开始剪辑</h2>
+          <p>支持从剪映导出的标准 SRT 格式。<br>自动检测口癖、静默、重复词，<br>精确到毫秒标记需要剪掉的部分。</p>
+        </div>
+        <div id="segmentsContainer" style="display:none"></div>
+      </div>
+      <div class="processing-banner" id="processingBanner">
+        <span class="spinner" id="procSpinner"></span>
+        <div class="info" id="procInfo"><strong>正在剪辑…</strong></div>
+        <div class="progress-bar-wrap" style="flex:1;max-width:300px"><div class="progress-bar-fill" id="procBar"></div></div>
+        <button class="btn btn-outline btn-small" onclick="downloadResult()" id="btnDownload" style="display:none">⬇ 下载</button>
+      </div>
+    </main>
+    <aside class="cut-panel">
+      <div class="cut-panel-header"><h3>剪辑清单</h3><span class="count" id="cutCount">0 刀</span></div>
+      <div class="cut-panel-scroll" id="cutListBody"><div class="cut-empty">暂无标记</div></div>
+      <div class="cut-total" id="cutTotal" style="display:none">
+        <span class="stat">删除 <strong id="cutTotalTime">0</strong></span>
+        <span class="stat">占比 <strong id="cutPercent">0%</strong></span>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal-overlay" id="exportModal">
+  <div class="modal">
+    <h2 id="exportModalTitle">📋 导出剪辑单</h2>
+    <p id="exportModalDesc">复制以下内容到剪映，按顺序手动剪切</p>
+    <textarea id="exportText" readonly></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="copyExport()">📋 复制</button>
+      <button class="btn btn-primary" onclick="closeModal('exportModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI Modal -->
+<div class="modal-overlay" id="aiModal">
+  <div class="modal">
+    <h2>🤖 AI 智能分析</h2>
+    <p>使用 AI 分析字幕内容，生成精确到秒的剪辑建议。</p>
+    <div class="ai-config">
+      <label>提供商:</label>
+      <select id="aiProvider" onchange="updateAiProvider()">
+        <option value="openai">OpenAI (ChatGPT)</option>
+        <option value="deepseek">DeepSeek</option>
+        <option value="qwen">Qwen (通义千问)</option>
+      </select>
+      <label>模型:</label>
+      <select id="aiModel"></select>
+    </div>
+    <div class="ai-config">
+      <label>API Key:</label>
+      <input type="password" id="aiApiKey" placeholder="输入你的 API Key">
+    </div>
+    <div class="ai-config">
+      <label>Base URL:</label>
+      <input type="text" id="aiBaseUrl">
+    </div>
+    <div id="aiResult" style="display:none">
+      <p style="font-size:11px;color:var(--text2);margin-bottom:4px">AI 建议（点击「应用」标记到字幕段）</p>
+      <textarea id="aiResultText" readonly></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="applyAiBtn" onclick="applyAiSuggestions()" style="display:none">✅ 应用 AI 建议</button>
+      <button class="btn btn-primary" id="startAiBtn" onclick="runAiAnalysis()">🚀 开始分析</button>
+      <button class="btn btn-outline" onclick="closeModal('aiModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const AI_PROVIDERS = {
+  openai: { baseUrl:'https://api.openai.com/v1', models:['gpt-4.1-mini','gpt-4o-mini','gpt-4o'] },
+  deepseek:{ baseUrl:'https://api.deepseek.com/v1', models:['deepseek-chat','deepseek-reasoner'] },
+  qwen:   { baseUrl:'https://dashscope.aliyuncs.com/compatible-mode/v1', models:['qwen-plus','qwen-max','qwen-turbo'] },
+};
+
+const state = {
+  segments: [], cutSet: new Set(),
+  fillerWords: ['嗯','啊','呃','就是','然后','那个','这个','对吧','是吧','其实','所以说','然后呢','就是说','基本上','完了','然后就是说','然后就是','um','uh','er','like','you know','actually','basically','sort of','kind of','i mean','right','so'],
+  activeFillers: new Set(), videoFile: null, jobId: null, _aiCuts: null,
+};
+
+function init(){
+  renderFillerTags();
+  const a=document.getElementById('uploadArea');
+  a.addEventListener('dragover',e=>{e.preventDefault();a.classList.add('dragover')});
+  a.addEventListener('dragleave',()=>a.classList.remove('dragover'));
+  a.addEventListener('drop',e=>{e.preventDefault();a.classList.remove('dragover');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0])});
+  const vz=document.getElementById('videoZone');
+  vz.addEventListener('dragover',e=>{e.preventDefault();vz.classList.add('dragover')});
+  vz.addEventListener('dragleave',()=>vz.classList.remove('dragover'));
+  vz.addEventListener('drop',e=>{e.preventDefault();vz.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('video/'))handleVideo(f)});
+  const k=localStorage.getItem('srt_cutter_api_key');if(k)document.getElementById('aiApiKey').value=k;
+  const p=localStorage.getItem('srt_cutter_ai_provider')||'openai';
+  document.getElementById('aiProvider').value=p;
+  updateAiProvider();checkFFmpeg();
+}
+
+function updateAiProvider(){
+  const p=document.getElementById('aiProvider').value;
+  const cfg=AI_PROVIDERS[p];
+  if(!cfg)return;
+  document.getElementById('aiBaseUrl').value=cfg.baseUrl;
+  const sel=document.getElementById('aiModel');sel.innerHTML='';
+  cfg.models.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;sel.appendChild(o)});
+  localStorage.setItem('srt_cutter_ai_provider',p);
+}
+
+async function checkFFmpeg(){
+  const el=document.getElementById('ffmpegStatus');
+  try{
+    const r=await fetch('/api/check-ffmpeg');const d=await r.json();
+    if(d.available){el.innerHTML='<span class="ok">● FFmpeg 就绪</span>';updateCutButton()}
+    else{el.innerHTML='<span class="fail">● FFmpeg 未安装</span> <button class="btn btn-small btn-outline" onclick="installFFmpeg()">安装</button>'}
+  }catch(e){el.innerHTML='<span class="fail">● 无法检查</span>'}
+}
+async function installFFmpeg(){const el=document.getElementById('ffmpegStatus');el.innerHTML='<span class="spinner"></span> 安装中…';try{const r=await fetch('/api/install-ffmpeg',{method:'POST'});const d=await r.json();if(d.success){toast('FFmpeg 安装成功！','success');checkFFmpeg()}else{toast('安装失败: '+(d.error||'?'),'error');checkFFmpeg()}}catch(e){toast('安装失败: '+e.message,'error');checkFFmpeg()}}
+
+function parseSRT(text){
+  const blocks=text.trim().replace(/\r\n/g,'\n').split(/\n\n+/);
+  return blocks.map(block=>{
+    const lines=block.trim().split('\n');if(lines.length<3)return null;
+    const tcLine=lines.find(l=>l.includes('-->'));if(!tcLine)return null;
+    const[s,e]=tcLine.split('-->').map(x=>x.trim().replace(',','.'));
+    const startMs=tcToMs(s),endMs=tcToMs(e);
+    const idx=lines.indexOf(tcLine);
+    const text=lines.slice(idx+1).join(' ').replace(/<[^>]+>/g,'').trim();
+    if(!text)return null;
+    return {startMs,endMs,text,durationMs:endMs-startMs};
+  }).filter(Boolean).map((seg,i)=>({...seg,id:i}));
+}
+function tcToMs(s){const p=s.trim().split(/[:.]/);if(p.length<4)return 0;return (+p[0]*3600+ +p[1]*60+ +p[2])*1000+ +p[3].padEnd(3,'0').slice(0,3)}
+function msToTc(ms){const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000),sec=Math.floor((ms%60000)/1000),cs=Math.floor((ms%1000)/10);return `${pad(h)}:${pad(m)}:${pad(sec)}.${pad(cs)}`;function pad(n){return String(n).padStart(2,'0')}}
+
+function handleFile(file){if(!file)return;document.getElementById('fileName').textContent=file.name;document.getElementById('uploadArea').classList.add('has-file');const r=new FileReader();r.onload=e=>{state.segments=parseSRT(e.target.result);state.cutSet=new Set();renderTimeline();updateStats();document.getElementById('btnAuto').disabled=false;document.getElementById('btnClear').disabled=false;toast('✅ 已导入 '+state.segments.length+' 条字幕段','success')};r.readAsText(file,'UTF-8')}
+function handleVideo(file){if(!file)return;state.videoFile=file;document.getElementById('videoFileName').textContent=file.name;document.getElementById('videoZone').classList.add('has-file');updateCutButton()}
+function updateCutButton(){document.getElementById('btnCut').disabled=!(state.videoFile&&state.cutSet.size>0)}
+
+function renderFillerTags(){const c=document.getElementById('fillerTags');c.innerHTML='';for(const w of state.fillerWords){const active=state.activeFillers.has(w)||state.activeFillers.size===0;const tag=document.createElement('span');tag.className='filler-tag'+(active?' active':'');tag.innerHTML=esc(w)+' <span class="del" onclick="event.stopPropagation();removeFiller(\''+esc(w)+'\')">✕</span>';tag.onclick=()=>toggleFiller(w);c.appendChild(tag)}}
+function toggleFiller(w){if(state.activeFillers.has(w))state.activeFillers.delete(w);else state.activeFillers.add(w);renderFillerTags();if(state.segments.length)highlightFillers()}
+function addFiller(){const v=document.getElementById('fillerInput').value.trim().toLowerCase();if(!v)return;if(!state.fillerWords.includes(v)){state.fillerWords.push(v);state.activeFillers.add(v)}document.getElementById('fillerInput').value='';renderFillerTags();if(state.segments.length)highlightFillers()}
+function removeFiller(w){state.fillerWords=state.fillerWords.filter(x=>x!==w);state.activeFillers.delete(w);renderFillerTags();if(state.segments.length)highlightFillers()}
+
+function highlightFillers(){
+  const fillers=(state.activeFillers.size>0?[...state.activeFillers]:[...state.fillerWords]).sort((a,b)=>b.length-a.length);if(!fillers.length)return;
+  for(const seg of state.segments){seg._fillerMatches=[];let t=seg.text.toLowerCase();for(const f of fillers){let idx=0;const fl=f.toLowerCase();while(idx<t.length){const pos=t.indexOf(fl,idx);if(pos===-1)break;seg._fillerMatches.push({word:f,start:pos,end:pos+f.length});idx=pos+1}}if(seg._fillerMatches.length>1){seg._fillerMatches.sort((a,b)=>a.start-b.start);const d=[seg._fillerMatches[0]];for(let i=1;i<seg._fillerMatches.length;i++){if(seg._fillerMatches[i].start>=d[d.length-1].end)d.push(seg._fillerMatches[i])}seg._fillerMatches=d}}
+  if(document.getElementById('highlightRepeat').checked){for(const seg of state.segments){const words=seg.text.split(/[\s，。、！？；：,.;:！\u3000]+/).filter(w=>w.length>=2);const freq={};for(const w of words)freq[w]=(freq[w]||0)+1;for(const[word,count]of Object.entries(freq)){if(count<3||word.length<2)continue;let idx=0;while(idx<seg.text.length){const pos=seg.text.indexOf(word,idx);if(pos===-1)break;const overlap=(seg._fillerMatches||[]).some(m=>pos<m.end&&pos+word.length>m.start);if(!overlap)seg._fillerMatches.push({word:word+'(×'+count+')',start:pos,end:pos+word.length,isRepeat:true});idx=pos+1}}}}
+  renderTimeline();
+}
+function detectGaps(){if(state.segments.length<2)return;const t=+document.getElementById('silenceThreshold').value*1000;for(let i=0;i<state.segments.length;i++){const seg=state.segments[i];seg._gapAfter=i>0?Math.max(0,seg.startMs-state.segments[i-1].endMs):0;seg._isGap=seg._gapAfter>t}}
+
+function autoDetectAll(){if(!state.segments.length)return;state.cutSet=new Set();highlightFillers();detectGaps();for(const seg of state.segments){let cut=false,reasons=[];if(seg._fillerMatches&&seg._fillerMatches.length){const fc=seg._fillerMatches.reduce((s,m)=>s+(m.end-m.start),0);if(fc/Math.max(seg.text.length,1)>.3||seg._fillerMatches.length>=3){cut=true;reasons.push('口癖过多')}}if(seg.durationMs<2000&&seg._gapAfter>2000){cut=true;reasons.push('短段+长静默')}if(seg.text.trim().length<=2&&'嗯啊呃对是好'.includes(seg.text.trim())){cut=true;reasons.push('单字口癖')}if(seg._isGap&&seg._gapAfter>3000){cut=true;reasons.push('静默 '+(seg._gapAfter/1000).toFixed(1)+'s')}if(cut){seg._cutReasons=reasons;state.cutSet.add(seg.id)}}renderTimeline();updateStats();updateCutButton();toast('🔍 扫描完成，标记了 '+state.cutSet.size+' 段')}
+
+function renderTimeline(){const c=document.getElementById('segmentsContainer'),e=document.getElementById('emptyState');if(!state.segments.length){c.style.display='none';e.style.display='flex';return}e.style.display='none';c.style.display='block';c.innerHTML='';for(const seg of state.segments){const div=document.createElement('div');div.className='segment';div.id='seg-'+seg.id;if(state.cutSet.has(seg.id))div.classList.add('marked');if(seg._isGap)div.classList.add('gap-warning');div.onclick=()=>toggleCut(seg.id);const m=seg._fillerMatches||[];let h='';if(m.length){let l=0;[...m].sort((a,b)=>a.start-b.start).forEach(mt=>{h+=esc(seg.text.slice(l,mt.start))+'<mark title="'+esc(mt.word)+'">'+esc(seg.text.slice(mt.start,mt.end))+'</mark>';l=mt.end});h+=esc(seg.text.slice(l))}else h=esc(seg.text);div.innerHTML='<div class="time">'+msToTc(seg.startMs)+' → '+msToTc(seg.endMs)+'<br><span class="dur">'+(seg.durationMs/1000).toFixed(1)+'s'+(seg._gapAfter>1000?' · '+(seg._gapAfter/1000).toFixed(1)+'s间隔':'')+'</span></div><div class="text">'+h+'</div><div class="actions"><button class="btn-time" title="复制时间码" onclick="event.stopPropagation();copyTimeCode('+seg.id+')">⏱</button><button title="标记剪辑" onclick="event.stopPropagation();toggleCut('+seg.id+')">✕</button></div>';c.appendChild(div)}}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function toggleCut(id){if(state.cutSet.has(id))state.cutSet.delete(id);else state.cutSet.add(id);renderTimeline();updateStats();updateCutButton()}
+function copyTimeCode(id){const s=state.segments.find(s=>s.id===id);if(!s)return;navigator.clipboard.writeText(msToTc(s.startMs)+' → '+msToTc(s.endMs)+' ('+(s.durationMs/1000).toFixed(1)+'s)').then(()=>toast('⏱ 已复制','success'))}
+
+function updateStats(){if(!state.segments.length){document.getElementById('stDur').textContent='--';return}const t=state.segments.reduce((s,seg)=>s+seg.durationMs,0);const c=state.segments.filter(seg=>state.cutSet.has(seg.id)).reduce((s,seg)=>s+seg.durationMs,0);const fc=state.segments.reduce((s,seg)=>s+(seg._fillerMatches?seg._fillerMatches.length:0),0);const gc=state.segments.filter(seg=>seg._isGap).length;document.getElementById('stDur').textContent=msToTimeStr(t);document.getElementById('stSegs').textContent=state.segments.length;document.getElementById('stFillers').textContent=fc;document.getElementById('stGaps').textContent=gc;document.getElementById('stCut').textContent=state.cutSet.size+'/'+msToTimeStr(c);renderCutList()}
+function msToTimeStr(ms){const t=Math.round(ms/1000);return t>=60?Math.floor(t/60)+'分'+t%60+'秒':t+'秒'}
+function renderCutList(){const cutSegs=state.segments.filter(seg=>state.cutSet.has(seg.id));document.getElementById('cutCount').textContent=cutSegs.length+' 刀';const body=document.getElementById('cutListBody'),total=document.getElementById('cutTotal');if(!cutSegs.length){body.innerHTML='<div class="cut-empty">暂无标记</div>';total.style.display='none';return}total.style.display='flex';body.innerHTML='';for(const seg of cutSegs){const reasons=seg._cutReasons||[],words=[...new Set((seg._fillerMatches||[]).map(m=>m.word))];const rt=reasons.length?reasons.join('; '):(words.length?'口癖: '+words.slice(0,3).join(','):'手动标记');const item=document.createElement('div');item.className='cut-item';item.innerHTML='<div class="cut-time">'+msToTc(seg.startMs)+' → '+msToTc(seg.endMs)+' ('+(seg.durationMs/1000).toFixed(1)+'s)</div><div class="cut-reason">'+esc(rt)+'</div>';item.onclick=()=>{const el=document.getElementById('seg-'+seg.id);if(el)el.scrollIntoView({behavior:'smooth',block:'center'})};body.appendChild(item)}const t=cutSegs.reduce((s,seg)=>s+seg.durationMs,0),ts=state.segments.reduce((s,seg)=>s+seg.durationMs,0);document.getElementById('cutTotalTime').textContent=msToTimeStr(t)+' ('+(t/1000).toFixed(1)+'s)';document.getElementById('cutPercent').textContent=ts>0?(t/ts*100).toFixed(1)+'%':'0%'}
+function clearAll(){state.cutSet=new Set();for(const s of state.segments){s._isGap=false;s._gapAfter=0;s._cutReasons=undefined;s._fillerMatches=undefined}renderTimeline();updateStats();updateCutButton()}
+function scrollToFirstCut(){if(!state.cutSet.size)return;const f=state.segments.find(seg=>state.cutSet.has(seg.id));if(f){const el=document.getElementById('seg-'+f.id);if(el)el.scrollIntoView({behavior:'smooth',block:'center'})}}
+
+async function startAutoCut(){if(!state.videoFile||!state.cutSet.size){toast('请上传视频并标记剪辑段','error');return}const cuts=state.segments.filter(seg=>state.cutSet.has(seg.id)).map(seg=>({start:seg.startMs/1000,end:seg.endMs/1000,reason:(seg._cutReasons||[]).join('; ')||'口癖'})).filter(c=>c.end>c.start+0.1);if(!cuts.length){toast('没有有效的剪辑段','error');return}const form=new FormData();form.append('video',state.videoFile);form.append('cuts',JSON.stringify(cuts));form.append('quality',document.getElementById('qualitySelect').value);const banner=document.getElementById('processingBanner');banner.classList.add('active');document.getElementById('procSpinner').style.display='inline-block';document.getElementById('btnDownload').style.display='none';document.getElementById('procBar').style.width='0%';document.getElementById('procInfo').innerHTML='<strong>正在提交…</strong>';document.getElementById('btnCut').disabled=true;try{const resp=await fetch('/api/cut',{method:'POST',body:form});const result=await resp.json();if(!resp.ok)throw new Error(result.error||'请求失败');state.jobId=result.job_id;document.getElementById('procInfo').innerHTML='<strong>正在剪辑…</strong> 完成后下载导入剪映精修';await new Promise((resolve,reject)=>{const iv=setInterval(async()=>{try{const r=await fetch('/api/progress/'+state.jobId);const d=await r.json();if(d.status==='running'){document.getElementById('procBar').style.width=d.progress+'%';document.getElementById('procInfo').innerHTML='<strong>剪辑中…</strong> '+(d.message||'')}else if(d.status==='done'){clearInterval(iv);document.getElementById('procBar').style.width='100%';document.getElementById('procSpinner').style.display='none';document.getElementById('btnDownload').style.display='inline-flex';document.getElementById('procInfo').innerHTML='<strong>✅ 剪辑完成！</strong> 点击下载，导入剪映精修';document.getElementById('btnCut').disabled=false;toast('✅ 视频剪辑完成！','success');resolve()}else if(d.status==='error'){clearInterval(iv);document.getElementById('procSpinner').style.display='none';document.getElementById('procInfo').innerHTML='<strong>❌ 处理失败</strong> '+(d.error||'');document.getElementById('btnCut').disabled=false;reject(new Error(d.error))}}catch(e){}},1000)})}catch(e){banner.classList.remove('active');document.getElementById('btnCut').disabled=false;toast('❌ '+e.message,'error')}}
+function downloadResult(){if(state.jobId)window.open('/api/download/'+state.jobId,'_blank')}
+
+function openExportModal(){const cutSegs=state.segments.filter(seg=>state.cutSet.has(seg.id));if(!cutSegs.length){toast('还没有标记任何剪辑段','error');return}const t=cutSegs.reduce((s,seg)=>s+seg.durationMs,0),ts=state.segments.reduce((s,seg)=>s+seg.durationMs,0);let lines=['═══════════════════════════════════════','  剪辑清单 · SRT Cutter','  文件: '+(document.getElementById('fileName').textContent||'-'),'  生成: '+new Date().toLocaleString('zh-CN'),'═══════════════════════════════════════',''];cutSegs.forEach((seg,i)=>{const r=(seg._cutReasons||[]).join('; ')||[...new Set((seg._fillerMatches||[]).map(m=>m.word))].slice(0,3).join(',')||'手动标记';lines.push('  ✕ '+(i+1)+'. '+msToTc(seg.startMs)+' → '+msToTc(seg.endMs)+'  ['+(seg.durationMs/1000).toFixed(1)+'秒] '+r);lines.push('     "'+seg.text+'"');lines.push('')});lines.push('═══════════════════════════════════════');lines.push('  总删除: '+msToTimeStr(t)+' ('+(t/1000).toFixed(1)+'s)');lines.push('  总时长: '+msToTimeStr(ts));lines.push('  精简比: '+(t/ts*100).toFixed(1)+'%');lines.push('═══════════════════════════════════════');lines.push('');lines.push('操作指引：在剪映时间线上找到对应时间点剪切即可。');document.getElementById('exportText').value=lines.join('\n');document.getElementById('exportModalTitle').textContent='📋 导出剪辑单';document.getElementById('exportModalDesc').textContent='复制以下内容到剪映，按顺序手动剪切';document.getElementById('exportModal').classList.add('open')}
+function copyExport(){navigator.clipboard.writeText(document.getElementById('exportText').value);toast('📋 已复制','success')}
+
+function openAiModal(){if(!state.segments.length){toast('请先导入 SRT','error');return}document.getElementById('aiResult').style.display='none';document.getElementById('applyAiBtn').style.display='none';document.getElementById('startAiBtn').disabled=false;document.getElementById('startAiBtn').innerHTML='🚀 开始分析';document.getElementById('aiModal').classList.add('open')}
+
+async function runAiAnalysis(){
+  const apiKey=document.getElementById('aiApiKey').value.trim(),baseUrl=document.getElementById('aiBaseUrl').value.trim().replace(/\/+$/,''),model=document.getElementById('aiModel').value;
+  if(!apiKey){toast('请输入 API Key','error');return}localStorage.setItem('srt_cutter_api_key',apiKey);
+  const btn=document.getElementById('startAiBtn');btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 分析中…';
+  const transcript=state.segments.map(s=>'['+msToTc(s.startMs)+'] '+s.text).join('\n');
+  const fillers=[...(state.activeFillers.size>0?state.activeFillers:state.fillerWords)].join('、');
+  try{
+    const resp=await fetch(baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({model,messages:[{role:'system',content:'你是一个中文播客剪辑助手。分析以下带时间戳的字幕，输出JSON格式的剪辑建议。\n检测方向：\n1. 口癖词（'+fillers+'）\n2. 内容重复/车轱辘话\n3. 离题\n4. 长静默/卡顿\n\n严格输出JSON（不加markdown包裹）：\n{"cuts":[{"start":"00:01:23.45","end":"00:01:25.89","reason":"口癖：就是出现3次","confidence":0.9}],"summary":"简要分析"}'},{role:'user',content:'字幕内容：\n'+transcript}],temperature:0.1})});
+    if(!resp.ok){const e=await resp.text();throw new Error('API错误('+resp.status+'): '+e.slice(0,200))}
+    const data=await resp.json();const content=data.choices[0].message.content;
+    const jm=content.match(/\{[\s\S]*\}/);if(!jm)throw new Error('返回格式异常');
+    const result=JSON.parse(jm[0]);state._aiCuts=result.cuts||[];state._aiSummary=result.summary||'';
+    document.getElementById('aiResultText').value=JSON.stringify(result,null,2);document.getElementById('aiResult').style.display='block';document.getElementById('applyAiBtn').style.display='inline-flex';btn.innerHTML='✅ 分析完成';toast('🤖 AI 建议 '+state._aiCuts.length+' 处剪辑','success')
+  }catch(e){btn.disabled=false;btn.innerHTML='🚀 重新分析';toast('❌ '+e.message,'error')}
+}
+
+function applyAiSuggestions(){if(!state._aiCuts)return;for(const c of state._aiCuts){const s=tcToMs(c.start),e=tcToMs(c.end);for(const seg of state.segments){if(seg.startMs>=s-200&&seg.endMs<=e+200){state.cutSet.add(seg.id);if(!seg._cutReasons)seg._cutReasons=[];seg._cutReasons.push('AI:'+c.reason.slice(0,25))}}}renderTimeline();updateStats();updateCutButton();closeModal('aiModal');toast('✅ 已应用 AI 建议')}
+
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+document.querySelectorAll('.modal-overlay').forEach(el=>{el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open')})})
+
+function showQuickTour(){document.getElementById('exportText').value='📖 使用说明\n\n1️⃣ 导入字幕\n   从剪映导出 SRT 拖拽或点击上传\n\n2️⃣ 一键扫描\n   点击"一键扫描"自动标记口癖和静默\n   也可点击字幕段手动标记/取消\n\n3️⃣ 视频自动剪切\n   a) 左侧上传视频文件\n   b) 标记要剪掉的口癖段落\n   c) 点击"自动剪切去口癖"\n   d) 下载初版视频，导入剪映精修\n\n4️⃣ AI 分析（支持多家）\n   可选 OpenAI / DeepSeek / 通义千问\n   检测内容重复、离题等语义层面的问题\n\n5️⃣ 备份方案\n   导出剪辑单，在剪映手动操作';document.getElementById('exportModalTitle').textContent='📖 使用说明';document.getElementById('exportModalDesc').textContent='快速上手 SRT Cutter';document.getElementById('exportModal').classList.add('open')}
+
+function toast(msg,type){const el=document.createElement('div');el.className='toast'+(type?' '+type:'');el.textContent=msg;document.getElementById('toastContainer').appendChild(el);setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>el.remove(),300)},3000)}
+document.getElementById('silenceThreshold').addEventListener('change',()=>{if(state.segments.length){detectGaps();renderTimeline();updateStats()}})
+document.getElementById('highlightRepeat').addEventListener('change',()=>{if(state.segments.length)highlightFillers()})
+init();
+</script>
+</body>
+</html>
