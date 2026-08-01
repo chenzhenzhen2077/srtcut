@@ -59,6 +59,21 @@ def test_transcription_rejects_missing_media(tmp_path):
     assert response.status_code in (400, 503)
 
 
+def test_interrupted_transcription_is_reported_after_restart(tmp_path):
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+    job_id = "abcdef123456"
+    (work_dir / f"{job_id}_transcribe_progress.json").write_text(
+        '{"status":"running","progress":23}', encoding="utf-8"
+    )
+    app = create_app({"TESTING": True, "WORK_DIR": work_dir, "BIN_DIR": tmp_path / "bin"})
+
+    response = app.test_client().get(f"/api/transcribe/{job_id}/progress")
+
+    assert response.status_code == 200
+    assert response.get_json()["code"] == "job_interrupted"
+
+
 def test_smart_analyze_requires_semantic_ai(tmp_path):
     app = create_app({"TESTING": True, "WORK_DIR": tmp_path / "work", "BIN_DIR": tmp_path / "bin"})
     client = app.test_client()

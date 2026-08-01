@@ -20,7 +20,7 @@ from .media import (
 )
 from .project import create_edit_decision, load_edit_decision, run_podcast_exports
 from .smart import parse_srt
-from .speech import faster_whisper_available, transcribe_to_srt
+from .speech import faster_whisper_available, transcribe_to_srt, transcription_job_active
 
 logger = logging.getLogger(__name__)
 api = Blueprint("api", __name__)
@@ -277,9 +277,18 @@ def get_transcription_progress(job_id):
     _input, _output, progress_path = _transcription_paths(job_id, ".mp4")
     if progress_path.is_file():
         try:
-            return jsonify(json.loads(progress_path.read_text(encoding="utf-8")))
+            progress = json.loads(progress_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             return jsonify({"status": "running", "progress": 0})
+        if progress.get("status") in {"queued", "loading", "running"} and not transcription_job_active(job_id):
+            return jsonify(
+                {
+                    "status": "error",
+                    "error": "字幕任务因服务重启而中断，请重新生成",
+                    "code": "job_interrupted",
+                }
+            )
+        return jsonify(progress)
     return jsonify({"status": "pending", "progress": 0})
 
 

@@ -13,6 +13,8 @@ from .media import write_progress
 logger = logging.getLogger(__name__)
 _models = {}
 _models_lock = threading.Lock()
+_active_jobs = set()
+_active_jobs_lock = threading.Lock()
 
 
 def _positive_int(value, default):
@@ -33,6 +35,11 @@ def faster_whisper_available():
     except ImportError:
         return False
     return True
+
+
+def transcription_job_active(job_id):
+    with _active_jobs_lock:
+        return job_id in _active_jobs
 
 
 def _get_model(model_name):
@@ -89,6 +96,8 @@ def transcribe_to_srt(
     output_path = Path(output_path)
     progress_path = Path(progress_path)
     slot_acquired = False
+    with _active_jobs_lock:
+        _active_jobs.add(job_id)
     try:
         cache_path = _transcript_cache_path(input_path, cache_dir, model_name, language)
         if cache_path is not None and cache_path.is_file():
@@ -172,6 +181,8 @@ def transcribe_to_srt(
         logger.exception("Transcription job failed")
         write_progress(progress_path, {"status": "error", "error": str(exc)})
     finally:
+        with _active_jobs_lock:
+            _active_jobs.discard(job_id)
         if slot_acquired:
             _transcription_slots.release()
         if cleanup_input:
