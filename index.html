@@ -19,6 +19,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font:14px/1.6 var(-
 .mode-chooser-title{font-size:28px;font-weight:650;margin-bottom:8px;text-align:center}
 .mode-chooser-subtitle{font-size:13px;color:var(--text2);text-align:center;margin-bottom:24px}
 .mode-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.mode-cards.audio-layout{grid-template-columns:repeat(3,minmax(0,1fr))}
 .mode-card{background:var(--bg3);border:1px solid var(--bg4);border-radius:var(--radius);padding:24px;cursor:pointer;transition:border-color .15s,transform .15s;min-height:210px;display:flex;flex-direction:column}
 .mode-card:hover{border-color:var(--accent);transform:translateY(-2px)}
 .mode-card .mode-icon{font-size:32px;margin-bottom:12px}
@@ -43,6 +44,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font:14px/1.6 var(-
 .smart-file-meta span{background:var(--bg4);border-radius:var(--radius-sm);padding:3px 7px;font-size:10px;color:var(--text2)}
 .smart-guidance{background:var(--warn-bg);border-left:3px solid var(--warn);border-radius:var(--radius-sm);padding:8px 10px;margin-top:9px;font-size:11px;color:var(--text2);line-height:1.6}
 .smart-guidance strong{color:var(--warn)}
+.audio-workspace{position:fixed;inset:0;background:var(--bg);z-index:250;overflow:auto;padding:34px 22px}.audio-workspace.hidden{display:none}.audio-inner{width:min(920px,100%);margin:0 auto}.audio-top{display:flex;align-items:center;gap:12px;margin-bottom:28px}.audio-top h1{font-size:22px}.audio-top p{font-size:12px;color:var(--text2);margin-top:3px}.audio-step{background:var(--bg3);border:1px solid var(--bg4);border-radius:var(--radius);padding:18px;margin-bottom:14px}.audio-upload{border:2px dashed var(--bg4);border-radius:var(--radius);padding:30px;text-align:center;cursor:pointer}.audio-upload:hover,.audio-upload.dragover{border-color:var(--accent);background:var(--bg2)}.audio-upload .icon{font-size:30px}.audio-upload p{font-size:12px;color:var(--text2)}.audio-file{color:var(--accent);font-size:12px;margin-top:7px;display:none}.audio-upload.has-file .audio-file{display:block}.audio-status{font-size:12px;color:var(--text2);margin-top:10px;min-height:20px}.audio-suggestions{display:flex;flex-direction:column;gap:6px}.audio-suggestion{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--bg4);padding:9px;border-radius:var(--radius-sm);font-size:11px}.audio-suggestion input{accent-color:var(--accent)}.audio-suggestion .time{font:10px var(--mono);color:var(--danger);min-width:130px}.audio-suggestion .reason{color:var(--text2);flex:1}.audio-total{font-size:11px;color:var(--text2);margin-top:10px}
 .theme-toggle{min-width:28px;padding:3px 7px}
 .smart-actions{display:flex;gap:8px;margin-top:12px}
 .proposal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
@@ -195,7 +197,7 @@ input[type=file]{display:none}
   <div class="mode-chooser-inner">
     <div class="mode-chooser-title">选择你的剪辑方式</div>
     <div class="mode-chooser-subtitle">快速得到内容方案，或逐句掌控每个剪辑细节</div>
-    <div class="mode-cards">
+    <div class="mode-cards audio-layout">
       <button class="mode-card" onclick="selectMode('smart')">
         <div class="mode-icon">✨</div><h2>智能剪辑</h2>
         <p>上传视频后自动生成字幕、去除口癖，并根据内容生成 2-3 个剪辑方案供你选择。</p>
@@ -206,8 +208,21 @@ input[type=file]{display:none}
         <p>查看完整字幕时间轴，自己检查口癖、静默和重复内容，逐段调整剪辑。</p>
         <div class="mode-action">进入精细剪辑 →</div>
       </button>
+      <button class="mode-card" onclick="selectMode('audio')">
+        <div class="mode-icon">🎧</div><h2>音频播客</h2>
+        <p>上传 MP3、WAV 或 M4A，自动找出口癖和长停顿，导出适合音频平台的 MP3。</p>
+        <div class="mode-action">开始音频剪辑 →</div>
+      </button>
     </div>
     <div class="mode-note">随时可以在顶部切换模式</div>
+  </div>
+</div>
+<div class="audio-workspace hidden" id="audioWorkspace">
+  <div class="audio-inner">
+    <div class="audio-top"><button class="btn btn-outline btn-small" onclick="showModeChooser()">← 返回</button><div><h1>🎧 音频播客剪辑</h1><p>适合小宇宙等音频平台：自动找出口癖和长停顿，导出 MP3</p></div><button class="btn btn-outline btn-small theme-toggle" onclick="toggleTheme()">☀</button></div>
+    <div class="audio-step"><h2>1. 上传音频</h2><div class="audio-upload" id="audioUpload" onclick="document.getElementById('audioInput').click()"><div class="icon">🎙</div><p>点击或拖拽上传 MP3、WAV、M4A</p><div class="audio-file" id="audioFileName"></div></div><input type="file" id="audioInput" accept="audio/*,.m4a,.flac,.ogg" onchange="handleAudioFile(this.files[0])"><div class="audio-status" id="audioStatus">准备开始</div><button class="btn btn-primary" id="audioStart" onclick="startAudioAnalysis()" disabled>开始分析音频</button></div>
+    <div class="audio-step" id="audioSuggestionsStep" style="display:none"><h2>2. 检查建议删除的部分</h2><div class="audio-suggestions" id="audioSuggestions"></div><div class="audio-total" id="audioTotal"></div><button class="btn btn-success" onclick="renderAudioResult()" id="audioRender">导出剪辑后的 MP3</button></div>
+    <div class="audio-step" id="audioResultStep" style="display:none"><h2>3. 下载结果</h2><div class="audio-status" id="audioResultStatus"></div><button class="btn btn-success" id="audioDownload" style="display:none" onclick="downloadAudioResult()">⬇ 下载 MP3</button></div>
   </div>
 </div>
 <div class="smart-workspace hidden" id="smartWorkspace">
@@ -396,13 +411,14 @@ const AI_PROVIDERS = {
 const state = {
   segments: [], cutSet: new Set(),
   fillerWords: ['嗯','啊','呃','就是','然后','那个','这个','对吧','是吧','其实','所以说','然后呢','就是说','基本上','完了','然后就是说','然后就是','um','uh','er','like','you know','actually','basically','sort of','kind of','i mean','right','so'],
-  activeFillers: new Set(), videoFile: null, transcriptionFile: null, transcriptionJobId: null, jobId: null, _aiCuts: null, mode: localStorage.getItem('srt_cutter_mode') || null, theme: localStorage.getItem('srt_cutter_theme') || 'light', smartVideo: null, smartDuration: null,
+  activeFillers: new Set(), videoFile: null, transcriptionFile: null, transcriptionJobId: null, jobId: null, _aiCuts: null, mode: localStorage.getItem('srt_cutter_mode') || null, theme: localStorage.getItem('srt_cutter_theme') || 'light', smartVideo: null, smartDuration: null, audioFile: null, audioJobId: null, audioProjectId: null, audioCuts: [],
 };
 
 function init(){
   applyTheme();
   if(state.mode)document.getElementById('modeChooser').classList.add('hidden');
   if(state.mode==='smart')document.getElementById('smartWorkspace').classList.remove('hidden');
+  if(state.mode==='audio')document.getElementById('audioWorkspace').classList.remove('hidden');
   renderFillerTags();
   const a=document.getElementById('uploadArea');
   a.addEventListener('dragover',e=>{e.preventDefault();a.classList.add('dragover')});
@@ -424,8 +440,15 @@ function init(){
 
 function applyTheme(){document.body.classList.toggle('light',state.theme==='light');const icon=state.theme==='light'?'☾':'☀';document.querySelectorAll('.theme-toggle').forEach(el=>el.textContent=icon)}
 function toggleTheme(){state.theme=state.theme==='light'?'dark':'light';localStorage.setItem('srt_cutter_theme',state.theme);applyTheme()}
-function selectMode(mode){state.mode=mode;localStorage.setItem('srt_cutter_mode',mode);document.getElementById('modeChooser').classList.add('hidden');document.getElementById('smartWorkspace').classList.toggle('hidden',mode!=='smart');toast(mode==='smart'?'✨ 已进入智能剪辑':'🎛 已进入精细剪辑','success')}
-function showModeChooser(){document.getElementById('modeChooser').classList.remove('hidden');document.getElementById('smartWorkspace').classList.add('hidden')}
+function selectMode(mode){state.mode=mode;localStorage.setItem('srt_cutter_mode',mode);document.getElementById('modeChooser').classList.add('hidden');document.getElementById('smartWorkspace').classList.toggle('hidden',mode!=='smart');document.getElementById('audioWorkspace').classList.toggle('hidden',mode!=='audio');toast(mode==='smart'?'✨ 已进入智能剪辑':mode==='audio'?'🎧 已进入音频播客':'🎛 已进入精细剪辑','success')}
+function showModeChooser(){document.getElementById('modeChooser').classList.remove('hidden');document.getElementById('smartWorkspace').classList.add('hidden');document.getElementById('audioWorkspace').classList.add('hidden')}
+function handleAudioFile(file){if(!file)return;state.audioFile=file;document.getElementById('audioFileName').textContent=file.name+' · '+formatFileSize(file.size);document.getElementById('audioUpload').classList.add('has-file');document.getElementById('audioStart').disabled=false;document.getElementById('audioStatus').textContent='音频已选择，可以开始分析'}
+async function startAudioAnalysis(){if(!state.audioFile)return;const status=document.getElementById('audioStatus'),btn=document.getElementById('audioStart');btn.disabled=true;status.innerHTML='<span class="spinner"></span> 正在生成字幕…';try{const form=new FormData();form.append('media',state.audioFile);form.append('model','small');const r=await fetch('/api/transcribe',{method:'POST',body:form});const d=await r.json();if(!r.ok)throw new Error(d.error||'字幕生成失败');state.audioJobId=d.job_id;pollAudioTranscription(d.job_id)}catch(e){btn.disabled=false;status.textContent='分析失败：'+e.message}}
+async function pollAudioTranscription(jobId){const status=document.getElementById('audioStatus'),iv=setInterval(async()=>{try{const d=await (await fetch('/api/transcribe/'+jobId+'/progress')).json();if(d.status==='loading'||d.status==='running')status.innerHTML='<span class="spinner"></span> '+(d.message||'识别中…');else if(d.status==='done'){clearInterval(iv);status.innerHTML='<span class="spinner"></span> 正在分析停顿和口癖…';const srt=await (await fetch('/api/transcribe/'+jobId+'/srt')).text();const segments=parseSRT(srt).map(s=>({start:s.startMs/1000,end:s.endMs/1000,text:s.text}));const form=new FormData();form.append('audio',state.audioFile);form.append('segments',JSON.stringify(segments));const ar=await fetch('/api/audio/analyze',{method:'POST',body:form});const data=await ar.json();if(!ar.ok)throw new Error(data.error||'音频分析失败');state.audioProjectId=data.job_id;state.audioCuts=data.suggestions;renderAudioSuggestions(data.suggestions);status.textContent='分析完成，请检查建议后导出'}else if(d.status==='error'){clearInterval(iv);throw new Error(d.error||'字幕生成失败')}}catch(e){clearInterval(iv);document.getElementById('audioStart').disabled=false;status.textContent='分析失败：'+e.message}},1000)}
+function renderAudioSuggestions(suggestions){document.getElementById('audioSuggestionsStep').style.display='block';document.getElementById('audioSuggestions').innerHTML=suggestions.length?suggestions.map((s,i)=>'<label class="audio-suggestion"><input type="checkbox" checked data-audio-index="'+i+'"><span class="time">'+msToTc(s.start*1000)+' → '+msToTc(s.end*1000)+'</span><span class="reason">'+esc(s.reason)+'</span></label>').join(''):'<div class="audio-status">没有发现明显需要删除的部分，你可以直接保留原音频。</div>';document.getElementById('audioTotal').textContent=suggestions.length?'共发现 '+suggestions.length+' 处可检查的片段':''}
+async function renderAudioResult(){const selected=[...document.querySelectorAll('[data-audio-index]:checked')].map(el=>state.audioCuts[+el.dataset.audioIndex]);if(!selected.length){toast('请至少选择一处，或保留原音频','error');return}const status=document.getElementById('audioResultStatus');document.getElementById('audioResultStep').style.display='block';status.innerHTML='<span class="spinner"></span> 正在导出 MP3…';try{const r=await fetch('/api/audio/render',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job_id:state.audioProjectId,cuts:selected})});const d=await r.json();if(!r.ok)throw new Error(d.error||'导出失败');state.audioJobId=d.job_id;pollAudioRender(d.job_id)}catch(e){status.textContent='导出失败：'+e.message}}
+async function pollAudioRender(jobId){const status=document.getElementById('audioResultStatus'),iv=setInterval(async()=>{try{const d=await (await fetch('/api/audio/progress/'+jobId)).json();if(d.status==='running')status.innerHTML='<span class="spinner"></span> '+(d.message||'导出中…');else if(d.status==='done'){clearInterval(iv);status.textContent='音频导出完成';document.getElementById('audioDownload').style.display='inline-flex'}else if(d.status==='error'){clearInterval(iv);status.textContent='导出失败：'+(d.error||'')}}catch(e){}},1000)}
+function downloadAudioResult(){if(state.audioJobId)window.open('/api/audio/download/'+state.audioJobId,'_blank')}
 function formatFileSize(bytes){if(bytes<1024*1024)return (bytes/1024).toFixed(0)+' KB';if(bytes<1024*1024*1024)return (bytes/1024/1024).toFixed(0)+' MB';return (bytes/1024/1024/1024).toFixed(2)+' GB'}
 function formatEta(seconds){if(seconds<60)return '预计 '+Math.max(1,Math.round(seconds))+' 秒';const minutes=Math.round(seconds/60);return '预计 '+(minutes<60?minutes+' 分钟':Math.floor(minutes/60)+' 小时 '+minutes%60+' 分钟')}
 function estimateSmartSeconds(file,duration){const sizeMb=file.size/1024/1024;return Math.max(45,(duration||180)*1.7+sizeMb*.35+30)}

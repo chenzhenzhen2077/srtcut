@@ -31,3 +31,4 @@ class Config:
     AI_API_KEY = os.environ.get("PODCAST_CUTTER_AI_API_KEY", "")
     AI_BASE_URL = os.environ.get("PODCAST_CUTTER_AI_BASE_URL", "https://api.openai.com/v1")
     AI_MODEL = os.environ.get("PODCAST_CUTTER_AI_MODEL", "gpt-4.1-mini")
+    AUDIO_MAX_DURATION_MINUTES = _env_int("PODCAST_CUTTER_AUDIO_MAX_DURATION_MINUTES", 240)

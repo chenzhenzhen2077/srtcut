@@ -72,3 +72,17 @@ def test_smart_analyze_returns_proposals(tmp_path):
     data = response.get_json()
     assert data["project_id"]
     assert len(data["proposals"]) >= 2
+
+
+def test_audio_analyze_returns_suggestions(tmp_path):
+    app = create_app({"TESTING": True, "WORK_DIR": tmp_path / "work", "BIN_DIR": tmp_path / "bin"})
+    segments = '[{"start":0,"end":2,"text":"开始"},{"start":5,"end":6,"text":"嗯"}]'
+    response = app.test_client().post(
+        "/api/audio/analyze",
+        data={"audio": (io.BytesIO(b"fake-audio"), "sample.mp3"), "segments": segments},
+        content_type="multipart/form-data",
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["job_id"]
+    assert len(data["suggestions"]) == 2

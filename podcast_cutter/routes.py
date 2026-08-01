@@ -9,6 +9,7 @@ from pathlib import Path
 from flask import Blueprint, current_app, jsonify, request, send_file
 
 from .ai import generate_ai_proposals
+from .audio import analyze_audio_segments, run_audio_export
 from .media import (
     binary_version,
     find_binary,
@@ -50,6 +51,15 @@ def _find_smart_input(project_id):
     work_dir = Path(current_app.config["WORK_DIR"])
     allowed = (".mp4", ".mov", ".mkv", ".avi", ".webm")
     return next((work_dir / f"{project_id}_smart_input{suffix}" for suffix in allowed if (work_dir / f"{project_id}_smart_input{suffix}").is_file()), None)
+
+
+def _audio_paths(job_id, extension=".mp3"):
+    work_dir = Path(current_app.config["WORK_DIR"])
+    return (
+        work_dir / f"{job_id}_audio_input{extension}",
+        work_dir / f"{job_id}_audio_output.mp3",
+        work_dir / f"{job_id}_audio_progress.json",
+    )
 
 
 def _is_valid_job_id(job_id):
@@ -206,6 +216,72 @@ def download_transcript(job_id):
     if output_path.is_file():
         return send_file(str(output_path), as_attachment=True, download_name="自动生成字幕.srt")
     return jsonify({"error": "字幕未就绪"}), 404
+
+
+@api.post("/api/audio/analyze")
+def analyze_audio():
+    if "audio" not in request.files:
+        return jsonify({"error": "请上传音频文件"}), 400
+    try:
+        segments = json.loads(request.form.get("segments", "[]"))
+        threshold = float(request.form.get("silence_threshold", "1.5"))
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return jsonify({"error": "音频分析参数无效"}), 400
+    if not isinstance(segments, list) or not segments:
+        return jsonify({"error": "请先生成或导入音频字幕"}), 400
+    media = request.files["audio"]
+    extension = Path(media.filename or ".mp3").suffix.lower() or ".mp3"
+    if extension not in {".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg"}:
+        return jsonify({"error": "不支持的音频格式"}), 400
+    job_id = uuid.uuid4().hex[: current_app.config["JOB_ID_LENGTH"]]
+    input_path, _output_path, _progress_path = _audio_paths(job_id, extension)
+    media.save(input_path)
+    suggestions = analyze_audio_segments(segments, threshold)
+    return jsonify({"job_id": job_id, "suggestions": suggestions, "suggestion_count": len(suggestions)})
+
+
+@api.post("/api/audio/render")
+def render_audio():
+    try:
+        payload = request.get_json(force=True)
+        job_id = payload["job_id"]
+        cuts = normalize_cuts(payload.get("cuts", []), max_cuts=current_app.config["MAX_CUTS"])
+    except (TypeError, KeyError, ValueError, json.JSONDecodeError):
+        return jsonify({"error": "音频剪辑参数无效"}), 400
+    if not _is_valid_job_id(job_id):
+        return jsonify({"error": "任务 ID 无效"}), 400
+    work_dir = Path(current_app.config["WORK_DIR"])
+    input_path = next((work_dir / f"{job_id}_audio_input{suffix}" for suffix in (".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg") if (work_dir / f"{job_id}_audio_input{suffix}").is_file()), None)
+    if input_path is None:
+        return jsonify({"error": "音频项目已过期"}), 404
+    ffmpeg, ffprobe = _find_tools()
+    if not ffmpeg or not ffprobe:
+        return jsonify({"error": "音频处理功能不可用"}), 400
+    output_path = work_dir / f"{job_id}_audio_output.mp3"
+    progress_path = work_dir / f"{job_id}_audio_progress.json"
+    worker = threading.Thread(target=run_audio_export, args=(ffmpeg, ffprobe, input_path, output_path, progress_path, cuts), daemon=True, name=f"audio-{job_id}")
+    worker.start()
+    return jsonify({"job_id": job_id})
+
+
+@api.get("/api/audio/progress/<job_id>")
+def audio_progress(job_id):
+    if not _is_valid_job_id(job_id):
+        return jsonify({"error": "任务 ID 无效"}), 400
+    progress_path = Path(current_app.config["WORK_DIR"]) / f"{job_id}_audio_progress.json"
+    if progress_path.is_file():
+        return jsonify(json.loads(progress_path.read_text(encoding="utf-8")))
+    return jsonify({"status": "pending", "progress": 0})
+
+
+@api.get("/api/audio/download/<job_id>")
+def audio_download(job_id):
+    if not _is_valid_job_id(job_id):
+        return jsonify({"error": "任务 ID 无效"}), 400
+    output_path = Path(current_app.config["WORK_DIR"]) / f"{job_id}_audio_output.mp3"
+    if output_path.is_file():
+        return send_file(str(output_path), as_attachment=True, download_name="剪辑后播客.mp3")
+    return jsonify({"error": "音频未就绪"}), 404
 
 
 @api.post("/api/smart/analyze")
