@@ -12,6 +12,20 @@ html,body{height:100%;background:var(--bg);color:var(--text);font:14px/1.6 var(-
 ::-webkit-scrollbar-track{background:var(--bg2)}
 ::-webkit-scrollbar-thumb{background:var(--text3);border-radius:3px}
 .app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.mode-chooser{position:fixed;inset:0;background:var(--bg);z-index:300;display:flex;align-items:center;justify-content:center;padding:24px}
+.mode-chooser.hidden{display:none}
+.mode-chooser-inner{width:min(760px,100%)}
+.mode-chooser-title{font-size:28px;font-weight:650;margin-bottom:8px;text-align:center}
+.mode-chooser-subtitle{font-size:13px;color:var(--text2);text-align:center;margin-bottom:24px}
+.mode-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.mode-card{background:var(--bg3);border:1px solid var(--bg4);border-radius:var(--radius);padding:24px;cursor:pointer;transition:border-color .15s,transform .15s;min-height:210px;display:flex;flex-direction:column}
+.mode-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.mode-card .mode-icon{font-size:32px;margin-bottom:12px}
+.mode-card h2{font-size:18px;margin-bottom:7px}
+.mode-card p{font-size:12px;color:var(--text2);line-height:1.7}
+.mode-card .mode-action{margin-top:auto;padding-top:18px;color:var(--accent);font-size:12px;font-weight:600}
+.mode-note{text-align:center;color:var(--text3);font-size:11px;margin-top:18px}
+@media(max-width:600px){.mode-cards{grid-template-columns:1fr}.mode-chooser-title{font-size:23px}}
 .header{height:var(--header-h);display:flex;align-items:center;gap:12px;padding:0 20px;background:var(--bg2);border-bottom:1px solid var(--bg4);flex-shrink:0}
 .header h1{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
 .header h1 small{font-size:10px;font-weight:400;color:var(--text2)}
@@ -149,11 +163,31 @@ input[type=file]{display:none}
 </style>
 </head>
 <body>
+<div class="mode-chooser" id="modeChooser">
+  <div class="mode-chooser-inner">
+    <div class="mode-chooser-title">选择你的剪辑方式</div>
+    <div class="mode-chooser-subtitle">快速得到内容方案，或逐句掌控每个剪辑细节</div>
+    <div class="mode-cards">
+      <button class="mode-card" onclick="selectMode('smart')">
+        <div class="mode-icon">✨</div><h2>智能剪辑</h2>
+        <p>上传视频后自动生成字幕、去除口癖，并根据内容生成 2-3 个剪辑方案供你选择。</p>
+        <div class="mode-action">开始智能剪辑 →</div>
+      </button>
+      <button class="mode-card" onclick="selectMode('fine')">
+        <div class="mode-icon">🎛</div><h2>精细剪辑</h2>
+        <p>查看完整字幕时间轴，自己检查口癖、静默和重复内容，逐段调整剪辑。</p>
+        <div class="mode-action">进入精细剪辑 →</div>
+      </button>
+    </div>
+    <div class="mode-note">随时可以在顶部切换模式</div>
+  </div>
+</div>
 <div class="app">
   <header class="header">
     <h1>✂ SRT Cutter <small>播客剪辑辅助工具</small></h1>
     <span class="badge">v2.1</span>
     <div class="header-actions">
+      <button class="btn btn-outline btn-small" onclick="showModeChooser()">切换模式</button>
       <button class="btn btn-outline btn-small" onclick="showQuickTour()">使用说明</button>
       <button class="btn btn-outline btn-small" onclick="openExportModal()">📋 导出剪辑单</button>
       <button class="btn btn-primary btn-small" onclick="openAiModal()">🤖 AI 分析</button>
@@ -313,10 +347,11 @@ const AI_PROVIDERS = {
 const state = {
   segments: [], cutSet: new Set(),
   fillerWords: ['嗯','啊','呃','就是','然后','那个','这个','对吧','是吧','其实','所以说','然后呢','就是说','基本上','完了','然后就是说','然后就是','um','uh','er','like','you know','actually','basically','sort of','kind of','i mean','right','so'],
-  activeFillers: new Set(), videoFile: null, transcriptionFile: null, transcriptionJobId: null, jobId: null, _aiCuts: null,
+  activeFillers: new Set(), videoFile: null, transcriptionFile: null, transcriptionJobId: null, jobId: null, _aiCuts: null, mode: localStorage.getItem('srt_cutter_mode') || null,
 };
 
 function init(){
+  if(state.mode)document.getElementById('modeChooser').classList.add('hidden');
   renderFillerTags();
   const a=document.getElementById('uploadArea');
   a.addEventListener('dragover',e=>{e.preventDefault();a.classList.add('dragover')});
@@ -335,6 +370,9 @@ function init(){
   tz.addEventListener('dragleave',()=>tz.classList.remove('dragover'));
   tz.addEventListener('drop',e=>{e.preventDefault();tz.classList.remove('dragover');if(e.dataTransfer.files[0])handleTranscribeMedia(e.dataTransfer.files[0])});
 }
+
+function selectMode(mode){state.mode=mode;localStorage.setItem('srt_cutter_mode',mode);document.getElementById('modeChooser').classList.add('hidden');toast(mode==='smart'?'✨ 已进入智能剪辑':'🎛 已进入精细剪辑','success')}
+function showModeChooser(){document.getElementById('modeChooser').classList.remove('hidden')}
 
 function updateAiProvider(){
   const p=document.getElementById('aiProvider').value;
