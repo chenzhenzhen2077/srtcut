@@ -111,9 +111,15 @@ def encoder_available(ffmpeg_path, encoder):
         return False
 
 
-def build_ffmpeg_command(ffmpeg_path, input_path, output_path, cuts, quality):
-    """Build one video filter chain so fast mode cannot overwrite select()."""
-    expression = "*".join(f'not(between(t,{cut["start"]:.6f},{cut["end"]:.6f}))' for cut in cuts)
+def build_ffmpeg_command(ffmpeg_path, input_path, output_path, cuts, quality, keep=None):
+    """Build one filter chain for either deletion cuts or a selected keep range."""
+    selectors = []
+    if keep:
+        selectors.append(f'between(t,{keep["start"]:.6f},{keep["end"]:.6f})')
+    selectors.extend(f'not(between(t,{cut["start"]:.6f},{cut["end"]:.6f}))' for cut in cuts)
+    expression = "*".join(selectors)
+    if not expression:
+        raise ValueError("至少需要一个保留范围或剪辑范围")
     video_filters = [f"select='{expression}'", "setpts=N/FRAME_RATE/TB"]
     if encoder_available(ffmpeg_path, "h264_videotoolbox"):
         video_options = {
@@ -190,19 +196,36 @@ def write_progress(path, data):
             os.unlink(temp_name)
 
 
-def run_ffmpeg_cut(ffmpeg_path, ffprobe_path, input_path, output_path, progress_path, cuts, quality):
-    """Run a cut job and publish a small polling-friendly state file."""
+def run_ffmpeg_cut(
+    ffmpeg_path,
+    ffprobe_path,
+    input_path,
+    output_path,
+    progress_path,
+    cuts,
+    quality,
+    keep=None,
+    download_url=None,
+):
+    """Run a cut job, optionally keeping only one selected content range."""
     input_path = Path(input_path)
     output_path = Path(output_path)
     progress_path = Path(progress_path)
     try:
         duration = probe_duration(ffprobe_path, input_path)
         cuts = normalize_cuts(cuts, duration=duration)
-        if not cuts:
+        if not cuts and not keep:
             write_progress(progress_path, {"status": "error", "error": "没有有效的剪辑段"})
             return
+        if keep:
+            keep = {
+                "start": max(0.0, min(float(keep["start"]), duration)),
+                "end": max(0.0, min(float(keep["end"]), duration)),
+            }
+            if keep["end"] <= keep["start"] + 0.1:
+                raise ValueError("保留范围无效")
 
-        command = build_ffmpeg_command(ffmpeg_path, input_path, output_path, cuts, quality)
+        command = build_ffmpeg_command(ffmpeg_path, input_path, output_path, cuts, quality, keep=keep)
         write_progress(progress_path, {"status": "running", "progress": 5, "message": "启动 FFmpeg…"})
         process = subprocess.Popen(
             command,
@@ -213,7 +236,8 @@ def run_ffmpeg_cut(ffmpeg_path, ffprobe_path, input_path, output_path, progress_
         )
 
         cut_duration = sum(cut["end"] - cut["start"] for cut in cuts)
-        estimated_output_duration = max(1.0, duration - cut_duration)
+        base_duration = keep["end"] - keep["start"] if keep else duration
+        estimated_output_duration = max(1.0, base_duration - cut_duration)
         started_at = time.time()
         last_progress = 5
         for raw_line in iter(process.stdout.readline, ""):
@@ -241,7 +265,7 @@ def run_ffmpeg_cut(ffmpeg_path, ffprobe_path, input_path, output_path, progress_
                     "status": "done",
                     "progress": 100,
                     "message": "处理完成！",
-                    "download_url": f"/api/download/{job_id}",
+                    "download_url": download_url or f"/api/download/{job_id}",
                 },
             )
         else:

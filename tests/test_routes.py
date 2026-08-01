@@ -57,3 +57,18 @@ def test_transcription_rejects_missing_media(tmp_path):
     app = create_app({"TESTING": True, "WORK_DIR": tmp_path / "work", "BIN_DIR": tmp_path / "bin"})
     response = app.test_client().post("/api/transcribe", data={}, content_type="multipart/form-data")
     assert response.status_code in (400, 503)
+
+
+def test_smart_analyze_returns_proposals(tmp_path):
+    app = create_app({"TESTING": True, "WORK_DIR": tmp_path / "work", "BIN_DIR": tmp_path / "bin"})
+    client = app.test_client()
+    srt = "1\n00:00:00,000 --> 00:00:02,000\n第一段\n\n2\n00:00:02,000 --> 00:00:04,000\n第二段\n\n3\n00:00:04,000 --> 00:00:06,000\n第三段\n\n4\n00:00:06,000 --> 00:00:08,000\n第四段\n"
+    response = client.post(
+        "/api/smart/analyze",
+        data={"video": (io.BytesIO(b"fake-video"), "sample.mp4"), "srt": srt},
+        content_type="multipart/form-data",
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["project_id"]
+    assert len(data["proposals"]) >= 2

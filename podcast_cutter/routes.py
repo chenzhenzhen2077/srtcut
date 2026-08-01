@@ -8,6 +8,7 @@ from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify, request, send_file
 
+from .ai import generate_ai_proposals
 from .media import (
     binary_version,
     find_binary,
@@ -15,6 +16,7 @@ from .media import (
     normalize_cuts,
     run_ffmpeg_cut,
 )
+from .smart import generate_proposals, parse_srt
 from .speech import faster_whisper_available, transcribe_to_srt
 
 logger = logging.getLogger(__name__)
@@ -37,6 +39,17 @@ def _transcription_paths(job_id, extension):
         work_dir / f"{job_id}_transcript.srt",
         work_dir / f"{job_id}_transcribe_progress.json",
     )
+
+
+def _smart_paths(project_id, extension=".mp4"):
+    work_dir = Path(current_app.config["WORK_DIR"])
+    return work_dir / f"{project_id}_smart_input{extension}", work_dir / f"{project_id}_smart_output.mp4"
+
+
+def _find_smart_input(project_id):
+    work_dir = Path(current_app.config["WORK_DIR"])
+    allowed = (".mp4", ".mov", ".mkv", ".avi", ".webm")
+    return next((work_dir / f"{project_id}_smart_input{suffix}" for suffix in allowed if (work_dir / f"{project_id}_smart_input{suffix}").is_file()), None)
 
 
 def _is_valid_job_id(job_id):
@@ -193,6 +206,79 @@ def download_transcript(job_id):
     if output_path.is_file():
         return send_file(str(output_path), as_attachment=True, download_name="自动生成字幕.srt")
     return jsonify({"error": "字幕未就绪"}), 404
+
+
+@api.post("/api/smart/analyze")
+def smart_analyze():
+    if "video" not in request.files:
+        return jsonify({"error": "请上传视频文件"}), 400
+    transcript = request.form.get("srt", "")
+    segments = parse_srt(transcript)
+    if len(segments) < 2:
+        return jsonify({"error": "字幕内容太少，无法生成剪辑方案"}), 400
+    media = request.files["video"]
+    extension = Path(media.filename or ".mp4").suffix.lower() or ".mp4"
+    allowed = {".mp4", ".mov", ".mkv", ".avi", ".webm"}
+    if extension not in allowed:
+        return jsonify({"error": "智能剪辑目前只支持视频文件"}), 400
+    project_id = uuid.uuid4().hex[: current_app.config["JOB_ID_LENGTH"]]
+    input_path, _output_path = _smart_paths(project_id, extension)
+    media.save(input_path)
+    mode = "basic"
+    proposals = generate_proposals(segments)
+    if current_app.config["AI_API_KEY"]:
+        try:
+            proposals = generate_ai_proposals(
+                segments,
+                current_app.config["AI_API_KEY"],
+                current_app.config["AI_BASE_URL"],
+                current_app.config["AI_MODEL"],
+            )
+            mode = "ai"
+        except Exception:
+            logger.exception("Semantic proposal generation failed; using local fallback")
+    return jsonify(
+        {
+            "project_id": project_id,
+            "proposals": proposals,
+            "segment_count": len(segments),
+            "generation_mode": mode,
+        }
+    )
+
+
+@api.post("/api/smart/render")
+def smart_render():
+    try:
+        payload = request.get_json(force=True)
+        project_id = payload["project_id"]
+        proposal = payload["proposal"]
+    except (TypeError, KeyError, ValueError):
+        return jsonify({"error": "方案参数无效"}), 400
+    if not _is_valid_job_id(project_id) or not isinstance(proposal, dict):
+        return jsonify({"error": "方案参数无效"}), 400
+    input_path = _find_smart_input(project_id)
+    if input_path is None:
+        return jsonify({"error": "智能剪辑项目已过期"}), 404
+    ffmpeg, ffprobe = _find_tools()
+    if not ffmpeg or not ffprobe:
+        return jsonify({"error": "FFmpeg 和 FFprobe 均需要安装"}), 400
+    try:
+        keep = {"start": float(proposal["start"]), "end": float(proposal["end"])}
+        cuts = normalize_cuts(proposal.get("cuts", []), max_cuts=current_app.config["MAX_CUTS"])
+    except (KeyError, TypeError, ValueError):
+        return jsonify({"error": "方案时间范围无效"}), 400
+    job_id = uuid.uuid4().hex[: current_app.config["JOB_ID_LENGTH"]]
+    _input, output_path, progress_path = _paths(job_id)
+    worker = threading.Thread(
+        target=run_ffmpeg_cut,
+        args=(ffmpeg, ffprobe, input_path, output_path, progress_path, cuts, "medium"),
+        kwargs={"keep": keep, "download_url": f"/api/download/{job_id}"},
+        daemon=True,
+        name=f"smart-render-{job_id}",
+    )
+    worker.start()
+    return jsonify({"job_id": job_id})
 
 
 @api.get("/api/progress/<job_id>")

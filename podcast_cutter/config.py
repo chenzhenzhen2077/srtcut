@@ -28,3 +28,6 @@ class Config:
     INDEX_FILE = BASE_DIR / "index.html"
     WHISPER_MODEL = os.environ.get("PODCAST_CUTTER_WHISPER_MODEL", "small")
     WHISPER_MAX_DURATION_MINUTES = _env_int("PODCAST_CUTTER_WHISPER_MAX_DURATION_MINUTES", 180)
+    AI_API_KEY = os.environ.get("PODCAST_CUTTER_AI_API_KEY", "")
+    AI_BASE_URL = os.environ.get("PODCAST_CUTTER_AI_BASE_URL", "https://api.openai.com/v1")
+    AI_MODEL = os.environ.get("PODCAST_CUTTER_AI_MODEL", "gpt-4.1-mini")
