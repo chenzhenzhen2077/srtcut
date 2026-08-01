@@ -3,6 +3,7 @@
 import logging
 import os
 import threading
+import time
 from pathlib import Path
 
 from .media import write_progress
@@ -10,6 +11,18 @@ from .media import write_progress
 logger = logging.getLogger(__name__)
 _models = {}
 _models_lock = threading.Lock()
+
+
+def _positive_int(value, default):
+    try:
+        return max(1, int(value))
+    except (TypeError, ValueError):
+        return default
+
+
+_transcription_slots = threading.BoundedSemaphore(
+    _positive_int(os.environ.get("PODCAST_CUTTER_TRANSCRIPTION_CONCURRENCY"), 1)
+)
 
 
 def faster_whisper_available():
@@ -59,7 +72,11 @@ def transcribe_to_srt(
     input_path = Path(input_path)
     output_path = Path(output_path)
     progress_path = Path(progress_path)
+    slot_acquired = False
     try:
+        write_progress(progress_path, {"status": "queued", "progress": 2, "message": "等待本机字幕任务…"})
+        _transcription_slots.acquire()
+        slot_acquired = True
         write_progress(progress_path, {"status": "loading", "progress": 5, "message": "加载语音模型…"})
         model = _get_model(model_name)
         write_progress(progress_path, {"status": "running", "progress": 10, "message": "开始识别语音…"})
@@ -71,6 +88,7 @@ def transcribe_to_srt(
         )
 
         rows = []
+        last_progress_write = 0.0
         for index, segment in enumerate(segments, start=1):
             text = (segment.text or "").strip()
             if not text:
@@ -86,7 +104,18 @@ def transcribe_to_srt(
             )
             # faster-whisper does not expose total segment count, so provide a useful bounded status.
             progress = min(95, 10 + index // 2)
-            write_progress(progress_path, {"status": "running", "progress": progress, "message": f"识别中… 已生成 {len(rows)} 段"})
+            now = time.monotonic()
+            if now - last_progress_write >= 1.0:
+                write_progress(
+                    progress_path,
+                    {
+                        "status": "running",
+                        "progress": progress,
+                        "message": f"识别中… 已生成 {len(rows)} 段",
+                    },
+                    sync=False,
+                )
+                last_progress_write = now
 
         output_path.write_text("\n\n".join(rows) + ("\n" if rows else ""), encoding="utf-8")
         detected_language = getattr(info, "language", None)
@@ -105,6 +134,8 @@ def transcribe_to_srt(
         logger.exception("Transcription job failed")
         write_progress(progress_path, {"status": "error", "error": str(exc)})
     finally:
+        if slot_acquired:
+            _transcription_slots.release()
         if cleanup_input:
             try:
                 input_path.unlink(missing_ok=True)

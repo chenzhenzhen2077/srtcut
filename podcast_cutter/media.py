@@ -178,7 +178,7 @@ def probe_duration(ffprobe_path, input_path):
     return float(duration)
 
 
-def write_progress(path, data):
+def write_progress(path, data, sync=True):
     """Atomically publish progress so polling never sees partial JSON."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -187,7 +187,8 @@ def write_progress(path, data):
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             json.dump(data, handle, ensure_ascii=False)
             handle.flush()
-            os.fsync(handle.fileno())
+            if sync:
+                os.fsync(handle.fileno())
         os.replace(temp_name, path)
     finally:
         if os.path.exists(temp_name):
@@ -238,6 +239,7 @@ def run_ffmpeg_cut(
         estimated_output_duration = max(1.0, base_duration - cut_duration)
         started_at = time.time()
         last_progress = 5
+        last_progress_write = 0.0
         for raw_line in iter(process.stdout.readline, ""):
             line = raw_line.strip()
             if line.startswith("out_time="):
@@ -252,7 +254,18 @@ def run_ffmpeg_cut(
 
             elapsed_progress = min(90, int((time.time() - started_at) / max(estimated_output_duration * 0.8, 1) * 100))
             last_progress = max(last_progress, elapsed_progress)
-            write_progress(progress_path, {"status": "running", "progress": last_progress, "message": f"剪辑中… {last_progress}%"})
+            now = time.monotonic()
+            if now - last_progress_write >= 0.5 or line == "progress=end":
+                write_progress(
+                    progress_path,
+                    {
+                        "status": "running",
+                        "progress": last_progress,
+                        "message": f"剪辑中… {last_progress}%",
+                    },
+                    sync=False,
+                )
+                last_progress_write = now
 
         process.wait()
         if process.returncode == 0 and output_path.is_file() and output_path.stat().st_size > 0:
