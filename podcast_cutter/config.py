@@ -10,6 +10,13 @@ def _env_int(name, default):
     value = os.environ.get(name)
     if value is None:
         return default
+
+
+def _env_bool(name, default):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() not in {"0", "false", "no", "off"}
     try:
         return int(value)
     except ValueError:
@@ -31,4 +38,11 @@ class Config:
     AI_API_KEY = os.environ.get("PODCAST_CUTTER_AI_API_KEY", "")
     AI_BASE_URL = os.environ.get("PODCAST_CUTTER_AI_BASE_URL", "https://api.openai.com/v1")
     AI_MODEL = os.environ.get("PODCAST_CUTTER_AI_MODEL", "gpt-4.1-mini")
+    # auto prefers a configured cloud API and falls back to a local Ollama model.
+    AI_PROVIDER = os.environ.get("PODCAST_CUTTER_AI_PROVIDER", "auto").strip().lower()
+    AI_LOCAL_ENABLED = _env_bool("PODCAST_CUTTER_AI_LOCAL_ENABLED", True)
+    AI_LOCAL_BASE_URL = os.environ.get("PODCAST_CUTTER_AI_LOCAL_BASE_URL", "http://127.0.0.1:11434/v1")
+    AI_LOCAL_MODEL = os.environ.get("PODCAST_CUTTER_AI_LOCAL_MODEL", "qwen2.5:14b")
+    AI_LOCAL_API_KEY = os.environ.get("PODCAST_CUTTER_AI_LOCAL_API_KEY", "ollama")
+    AI_LOCAL_TIMEOUT = _env_int("PODCAST_CUTTER_AI_LOCAL_TIMEOUT", 1)
     AUDIO_MAX_DURATION_MINUTES = _env_int("PODCAST_CUTTER_AUDIO_MAX_DURATION_MINUTES", 240)

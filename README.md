@@ -43,6 +43,34 @@ python -m pip install -e '.[speech]'
 
 也可以通过环境变量调整端口、工作目录、二进制目录、上传大小和最大剪辑段数量，示例见 `.env.example`。
 
+## 智能内容分析
+
+智能剪辑支持两种语义模型通道，字幕生成仍由本地 Whisper 完成：
+
+- 本机模型：默认连接 Ollama 的 `qwen2.5:14b`，内容不发送到外部服务。
+- 在线 AI：连接 OpenAI 兼容接口，可使用 OpenAI、DeepSeek、通义等服务。
+
+默认 `PODCAST_CUTTER_AI_PROVIDER=auto`：配置了在线 API Key 时优先使用在线 AI，否则自动尝试本机模型。也可以设置为 `local` 或 `api` 固定通道。服务端通过 `/api/check-ai` 返回当前实际使用的通道、模型和本机可用模型列表，不会把 API Key 返回给浏览器。
+
+本机 Ollama 示例：
+
+```bash
+ollama serve
+PODCAST_CUTTER_AI_PROVIDER=local \
+PODCAST_CUTTER_AI_LOCAL_MODEL=qwen2.5:14b \
+python app.py
+```
+
+在线 API 示例：
+
+```bash
+PODCAST_CUTTER_AI_PROVIDER=api \
+PODCAST_CUTTER_AI_API_KEY=你的服务密钥 \
+PODCAST_CUTTER_AI_BASE_URL=https://api.openai.com/v1 \
+PODCAST_CUTTER_AI_MODEL=gpt-4.1-mini \
+python app.py
+```
+
 ## 检查与测试
 
 ```bash

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify, request, send_file
 
-from .ai import generate_ai_proposals
+from .ai import generate_ai_proposals, resolve_ai_backend
 from .audio import analyze_audio_segments, run_audio_export
 from .media import (
     binary_version,
@@ -158,12 +158,35 @@ def check_transcription():
 
 @api.get("/api/check-ai")
 def check_ai():
-    available = bool(current_app.config["AI_API_KEY"])
+    active = resolve_ai_backend(current_app.config)
+    if active.get("provider") == "local":
+        local = active
+    else:
+        local_config = dict(current_app.config)
+        local_config["AI_PROVIDER"] = "local"
+        local = resolve_ai_backend(local_config)
     return jsonify(
         {
-            "available": available,
-            "model": current_app.config["AI_MODEL"] if available else None,
-            "message": "智能内容分析已开通" if available else "智能内容分析服务尚未配置",
+            "available": active["available"],
+            "provider": active.get("provider"),
+            "model": active.get("model"),
+            "message": active["message"],
+            "selection": current_app.config["AI_PROVIDER"],
+            "local": {
+                "available": local["available"],
+                "model": local.get("model"),
+                "models": local.get("models", []),
+                "message": local["message"],
+            },
+            "api": {
+                "configured": bool(current_app.config["AI_API_KEY"]),
+                "model": current_app.config["AI_MODEL"],
+                "message": (
+                    f"在线 AI 已配置：{current_app.config['AI_MODEL']}"
+                    if current_app.config["AI_API_KEY"]
+                    else "在线 AI 尚未配置服务密钥"
+                ),
+            },
         }
     )
 
@@ -344,6 +367,7 @@ def prepare_media_project(project_id):
         segments,
         suggestions,
     )
+    ai_status = resolve_ai_backend(current_app.config)
     return jsonify(
         {
             "project_id": project_id,
@@ -351,7 +375,10 @@ def prepare_media_project(project_id):
             "segments": segments,
             "suggestions": suggestions,
             "transcript": transcript,
-            "ai_available": bool(current_app.config["AI_API_KEY"]),
+            "ai_available": ai_status["available"],
+            "ai_provider": ai_status.get("provider"),
+            "ai_model": ai_status.get("model"),
+            "ai_message": ai_status["message"],
         }
     )
 
@@ -566,11 +593,12 @@ def podcast_download(output_name, project_id):
 
 @api.post("/api/smart/analyze")
 def smart_analyze():
-    if not current_app.config["AI_API_KEY"]:
+    ai_status = resolve_ai_backend(current_app.config)
+    if not ai_status["available"]:
         return (
             jsonify(
                 {
-                    "error": "智能内容分析服务尚未配置，请使用精简剪辑",
+                    "error": ai_status["message"] + "；你仍可使用精简剪辑",
                     "code": "ai_unavailable",
                 }
             ),
@@ -592,9 +620,9 @@ def smart_analyze():
     try:
         understanding, proposals = generate_ai_proposals(
             segments,
-            current_app.config["AI_API_KEY"],
-            current_app.config["AI_BASE_URL"],
-            current_app.config["AI_MODEL"],
+            ai_status.get("api_key", ""),
+            ai_status["base_url"],
+            ai_status["model"],
         )
     except Exception:
         logger.exception("Semantic proposal generation failed")
@@ -605,7 +633,8 @@ def smart_analyze():
             "proposals": proposals,
             "understanding": understanding,
             "segment_count": len(segments),
-            "generation_mode": "ai",
+            "generation_mode": ai_status["provider"],
+            "model": ai_status["model"],
         }
     )
 

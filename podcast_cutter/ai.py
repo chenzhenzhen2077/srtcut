@@ -2,7 +2,127 @@
 
 import json
 import re
+from urllib.parse import urlsplit, urlunsplit
 from urllib.request import Request, urlopen
+
+
+def _local_root_url(base_url):
+    parsed = urlsplit(base_url.rstrip("/"))
+    path = parsed.path.rstrip("/").removesuffix("/v1")
+    return urlunsplit((parsed.scheme, parsed.netloc, path, "", "")).rstrip("/")
+
+
+def _read_json(url, timeout, api_key=""):
+    headers = {"Accept": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    with urlopen(Request(url, headers=headers), timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def list_local_models(base_url, timeout=2, api_key=""):
+    """List models from Ollama or another OpenAI-compatible local server."""
+    root_url = _local_root_url(base_url)
+    endpoints = [root_url + "/api/tags", base_url.rstrip("/") + "/models"]
+    for endpoint in endpoints:
+        try:
+            data = _read_json(endpoint, timeout, api_key)
+        except (OSError, ValueError):
+            data = {}
+        if isinstance(data.get("models"), list):
+            names = [str(item.get("name", "")) for item in data["models"] if item.get("name")]
+        elif isinstance(data.get("data"), list):
+            names = [str(item.get("id", "")) for item in data["data"] if item.get("id")]
+        else:
+            names = []
+        if names:
+            return names
+    return []
+
+
+def resolve_ai_backend(config):
+    """Resolve the active semantic model without exposing credentials to the browser."""
+    provider = str(config.get("AI_PROVIDER", "auto")).lower()
+    api_key = str(config.get("AI_API_KEY", ""))
+    api_ready = bool(api_key)
+
+    if provider in {"api", "cloud", "remote"}:
+        if api_ready:
+            return {
+                "available": True,
+                "provider": "api",
+                "model": config["AI_MODEL"],
+                "base_url": config["AI_BASE_URL"],
+                "api_key": api_key,
+                "message": f"在线 AI 已配置：{config['AI_MODEL']}",
+            }
+        return {
+            "available": False,
+            "provider": "api",
+            "model": config.get("AI_MODEL"),
+            "message": "在线 AI 尚未配置服务密钥",
+        }
+
+    if provider == "auto" and api_ready:
+        return {
+            "available": True,
+            "provider": "api",
+            "model": config["AI_MODEL"],
+            "base_url": config["AI_BASE_URL"],
+            "api_key": api_key,
+            "message": f"当前使用在线 AI：{config['AI_MODEL']}",
+        }
+
+    if provider not in {"auto", "local", "ollama"}:
+        return {
+            "available": False,
+            "provider": None,
+            "model": None,
+            "message": "AI 通道配置无效，请使用 auto、local 或 api",
+        }
+
+    if not config.get("AI_LOCAL_ENABLED", True):
+        return {
+            "available": False,
+            "provider": "local",
+            "model": config.get("AI_LOCAL_MODEL"),
+            "message": "本地 AI 已关闭；在线 AI 也尚未配置",
+        }
+
+    local_model = str(config.get("AI_LOCAL_MODEL", "qwen2.5:14b"))
+    local_base_url = str(config.get("AI_LOCAL_BASE_URL", "http://127.0.0.1:11434/v1"))
+    local_api_key = str(config.get("AI_LOCAL_API_KEY", "ollama"))
+    models = list_local_models(
+        local_base_url,
+        timeout=max(1, int(config.get("AI_LOCAL_TIMEOUT", 2))),
+        api_key=local_api_key,
+    )
+    normalized = {name.removesuffix(":latest") for name in models}
+    if local_model in models or local_model.removesuffix(":latest") in normalized:
+        return {
+            "available": True,
+            "provider": "local",
+            "model": local_model,
+            "base_url": local_base_url,
+            "api_key": local_api_key,
+            "models": models,
+            "message": f"当前使用本地模型：{local_model}，内容不会发送到外部 AI",
+        }
+    if models:
+        return {
+            "available": False,
+            "provider": "local",
+            "model": local_model,
+            "models": models,
+            "message": f"本地服务已运行，但没有找到 {local_model}",
+        }
+    return {
+        "available": False,
+        "provider": "local",
+        "model": local_model,
+        "models": [],
+        "message": "智能内容分析尚未配置，或本地模型服务尚未启动",
+    }
 
 
 def generate_ai_proposals(segments, api_key, base_url, model):
@@ -37,10 +157,13 @@ def generate_ai_proposals(segments, api_key, base_url, model):
             "temperature": 0.2,
         }
     ).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     request = Request(
         base_url.rstrip("/") + "/chat/completions",
         data=payload,
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+        headers=headers,
         method="POST",
     )
     with urlopen(request, timeout=90) as response:
