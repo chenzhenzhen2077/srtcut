@@ -42,3 +42,18 @@ def test_cut_rejects_invalid_ranges(tmp_path):
     )
     assert response.status_code == 400
     assert "剪辑段" in response.get_json()["error"]
+
+
+def test_transcription_status_is_explicit(tmp_path):
+    app = create_app({"TESTING": True, "WORK_DIR": tmp_path / "work", "BIN_DIR": tmp_path / "bin"})
+    response = app.test_client().get("/api/check-transcription")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "available" in data
+    assert data["install_hint"]
+
+
+def test_transcription_rejects_missing_media(tmp_path):
+    app = create_app({"TESTING": True, "WORK_DIR": tmp_path / "work", "BIN_DIR": tmp_path / "bin"})
+    response = app.test_client().post("/api/transcribe", data={}, content_type="multipart/form-data")
+    assert response.status_code in (400, 503)

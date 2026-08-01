@@ -6,11 +6,12 @@ build-backend = "setuptools.build_meta"
 name = "podcast-cutter"
 version = "0.3.0"
 description = "本地优先的播客字幕分析与视频剪辑工具"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 dependencies = ["Flask>=3.1,<4"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<9", "ruff>=0.6,<1"]
+speech = ["faster-whisper>=1.1,<2"]
 
 [project.scripts]
 podcast-cutter = "podcast_cutter.cli:main"
@@ -22,4 +23,3 @@ pythonpath = ["."]
 [tool.ruff]
 line-length = 110
 target-version = "py310"
-

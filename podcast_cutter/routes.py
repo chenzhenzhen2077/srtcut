@@ -15,6 +15,7 @@ from .media import (
     normalize_cuts,
     run_ffmpeg_cut,
 )
+from .speech import faster_whisper_available, transcribe_to_srt
 
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,15 @@ def _paths(job_id):
         work_dir / f"{job_id}_input.mp4",
         work_dir / f"{job_id}_output.mp4",
         work_dir / f"{job_id}_progress.json",
+    )
+
+
+def _transcription_paths(job_id, extension):
+    work_dir = Path(current_app.config["WORK_DIR"])
+    return (
+        work_dir / f"{job_id}_transcribe_input{extension}",
+        work_dir / f"{job_id}_transcript.srt",
+        work_dir / f"{job_id}_transcribe_progress.json",
     )
 
 
@@ -70,6 +80,17 @@ def check_ffmpeg():
             "version": binary_version(ffmpeg),
             "path": ffmpeg,
             "error": None if available else "FFmpeg 和 FFprobe 均需要安装",
+        }
+    )
+
+
+@api.get("/api/check-transcription")
+def check_transcription():
+    return jsonify(
+        {
+            "available": faster_whisper_available(),
+            "model": current_app.config["WHISPER_MODEL"],
+            "install_hint": "python -m pip install -e '.[speech]'",
         }
     )
 
@@ -120,6 +141,61 @@ def cut_video():
     return jsonify({"job_id": job_id})
 
 
+@api.post("/api/transcribe")
+def transcribe_video():
+    if not faster_whisper_available():
+        return jsonify({"error": "未安装 faster-whisper，请先安装语音识别依赖"}), 503
+    if "media" not in request.files:
+        return jsonify({"error": "请上传视频或音频文件"}), 400
+
+    media = request.files["media"]
+    original_name = Path(media.filename or "media").name
+    extension = Path(original_name).suffix.lower()
+    allowed_extensions = {".mp4", ".mov", ".mkv", ".avi", ".webm", ".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg"}
+    if extension not in allowed_extensions:
+        return jsonify({"error": "不支持的媒体格式"}), 400
+    model_name = request.form.get("model", current_app.config["WHISPER_MODEL"])
+    allowed_models = {"tiny", "base", "small", "medium", "large-v3", "distil-large-v3"}
+    if model_name not in allowed_models:
+        return jsonify({"error": "识别模型无效"}), 400
+    language = request.form.get("language", "").strip() or None
+
+    job_id = uuid.uuid4().hex[: current_app.config["JOB_ID_LENGTH"]]
+    input_path, output_path, progress_path = _transcription_paths(job_id, extension)
+    media.save(input_path)
+    worker = threading.Thread(
+        target=transcribe_to_srt,
+        args=(input_path, output_path, progress_path, job_id, model_name, language),
+        daemon=True,
+        name=f"transcribe-{job_id}",
+    )
+    worker.start()
+    return jsonify({"job_id": job_id})
+
+
+@api.get("/api/transcribe/<job_id>/progress")
+def get_transcription_progress(job_id):
+    if not _is_valid_job_id(job_id):
+        return jsonify({"error": "任务 ID 无效"}), 400
+    _input, _output, progress_path = _transcription_paths(job_id, ".mp4")
+    if progress_path.is_file():
+        try:
+            return jsonify(json.loads(progress_path.read_text(encoding="utf-8")))
+        except (OSError, json.JSONDecodeError):
+            return jsonify({"status": "running", "progress": 0})
+    return jsonify({"status": "pending", "progress": 0})
+
+
+@api.get("/api/transcribe/<job_id>/srt")
+def download_transcript(job_id):
+    if not _is_valid_job_id(job_id):
+        return jsonify({"error": "任务 ID 无效"}), 400
+    output_path = Path(current_app.config["WORK_DIR"]) / f"{job_id}_transcript.srt"
+    if output_path.is_file():
+        return send_file(str(output_path), as_attachment=True, download_name="自动生成字幕.srt")
+    return jsonify({"error": "字幕未就绪"}), 404
+
+
 @api.get("/api/progress/<job_id>")
 def get_progress(job_id):
     if not _is_valid_job_id(job_id):
@@ -141,4 +217,3 @@ def download(job_id):
     if output_path.is_file() and output_path.stat().st_size > 0:
         return send_file(str(output_path), as_attachment=True, download_name="剪好_去口癖.mp4")
     return jsonify({"error": "文件未就绪"}), 404
-

@@ -126,6 +126,16 @@ input[type=file]{display:none}
 .video-upload-zone .vfilename{font-size:11px;color:var(--accent);margin-top:2px;display:none}
 .video-upload-zone.has-file .vfilename{display:block}
 .video-upload-zone.has-file .vhint{display:none}
+.transcribe-upload-zone{border:1px dashed var(--bg4);border-radius:var(--radius-sm);padding:14px 8px;text-align:center;cursor:pointer;transition:all .2s;margin-top:4px}
+.transcribe-upload-zone:hover,.transcribe-upload-zone.dragover{border-color:var(--accent);background:var(--bg3)}
+.transcribe-upload-zone .icon{font-size:20px;color:var(--text3)}
+.transcribe-upload-zone p{font-size:10px;color:var(--text2)}
+.transcribe-upload-zone .tfilename{font-size:11px;color:var(--accent);margin-top:2px;display:none}
+.transcribe-upload-zone.has-file .tfilename{display:block}
+.transcribe-upload-zone.has-file .thint{display:none}
+.transcribe-options{display:flex;gap:5px;margin-top:6px}
+.transcribe-options select{flex:1;min-width:0;background:var(--bg4);color:var(--text);border:1px solid var(--bg4);border-radius:var(--radius-sm);padding:3px 5px;font:10px var(--font)}
+.transcribe-status{font-size:10px;display:flex;align-items:center;gap:4px;margin-top:5px;color:var(--text2)}
 .ffmpeg-status{font-size:10px;display:flex;align-items:center;gap:4px;margin-top:4px}
 .ffmpeg-status .ok{color:var(--ok)}
 .ffmpeg-status .fail{color:var(--danger)}
@@ -160,6 +170,21 @@ input[type=file]{display:none}
             <p class="filename" id="fileName"></p>
           </div>
           <input type="file" id="fileInput" accept=".srt,.txt" onchange="handleFile(this.files[0])">
+        </div>
+        <div class="card">
+          <div class="card-title">自动生成字幕</div>
+          <div class="transcribe-upload-zone" id="transcribeZone" onclick="document.getElementById('transcribeInput').click()">
+            <div class="icon">🎙</div>
+            <p class="thint">上传视频或音频</p>
+            <p class="tfilename" id="transcribeFileName"></p>
+          </div>
+          <input type="file" id="transcribeInput" accept="video/*,audio/*,.m4a,.flac,.ogg" onchange="handleTranscribeMedia(this.files[0])">
+          <div class="transcribe-options">
+            <select id="transcribeModel" title="识别模型"><option value="tiny">Tiny · 快</option><option value="base">Base</option><option value="small" selected>Small · 推荐</option><option value="medium">Medium · 准</option><option value="large-v3">Large · 最准</option></select>
+            <select id="transcribeLanguage" title="识别语言"><option value="">自动语言</option><option value="zh">中文</option><option value="en">English</option><option value="ja">日本語</option><option value="ko">한국어</option></select>
+          </div>
+          <div class="transcribe-status" id="transcribeStatus"><span>检查本地识别组件…</span></div>
+          <button class="btn btn-primary btn-full btn-small" onclick="startTranscription()" id="btnTranscribe" disabled>✨ 生成字幕</button>
         </div>
         <div class="card">
           <div class="card-title">口癖词 (点击切换)</div>
@@ -288,7 +313,7 @@ const AI_PROVIDERS = {
 const state = {
   segments: [], cutSet: new Set(),
   fillerWords: ['嗯','啊','呃','就是','然后','那个','这个','对吧','是吧','其实','所以说','然后呢','就是说','基本上','完了','然后就是说','然后就是','um','uh','er','like','you know','actually','basically','sort of','kind of','i mean','right','so'],
-  activeFillers: new Set(), videoFile: null, jobId: null, _aiCuts: null,
+  activeFillers: new Set(), videoFile: null, transcriptionFile: null, transcriptionJobId: null, jobId: null, _aiCuts: null,
 };
 
 function init(){
@@ -304,7 +329,11 @@ function init(){
   const k=localStorage.getItem('srt_cutter_api_key');if(k)document.getElementById('aiApiKey').value=k;
   const p=localStorage.getItem('srt_cutter_ai_provider')||'openai';
   document.getElementById('aiProvider').value=p;
-  updateAiProvider();checkFFmpeg();
+  updateAiProvider();checkFFmpeg();checkTranscription();
+  const tz=document.getElementById('transcribeZone');
+  tz.addEventListener('dragover',e=>{e.preventDefault();tz.classList.add('dragover')});
+  tz.addEventListener('dragleave',()=>tz.classList.remove('dragover'));
+  tz.addEventListener('drop',e=>{e.preventDefault();tz.classList.remove('dragover');if(e.dataTransfer.files[0])handleTranscribeMedia(e.dataTransfer.files[0])});
 }
 
 function updateAiProvider(){
@@ -327,6 +356,12 @@ async function checkFFmpeg(){
 }
 async function installFFmpeg(){const el=document.getElementById('ffmpegStatus');el.innerHTML='<span class="spinner"></span> 安装中…';try{const r=await fetch('/api/install-ffmpeg',{method:'POST'});const d=await r.json();if(d.success){toast('FFmpeg 安装成功！','success');checkFFmpeg()}else{toast('安装失败: '+(d.error||'?'),'error');checkFFmpeg()}}catch(e){toast('安装失败: '+e.message,'error');checkFFmpeg()}}
 
+async function checkTranscription(){const el=document.getElementById('transcribeStatus');try{const r=await fetch('/api/check-transcription');const d=await r.json();if(d.available){el.innerHTML='<span class="ok">● 本地识别就绪</span>';updateTranscribeButton()}else{el.innerHTML='<span class="fail">● 未安装 faster-whisper</span>'}}catch(e){el.innerHTML='<span class="fail">● 无法检查识别组件</span>'}}
+function handleTranscribeMedia(file){if(!file)return;state.transcriptionFile=file;document.getElementById('transcribeFileName').textContent=file.name;document.getElementById('transcribeZone').classList.add('has-file');updateTranscribeButton()}
+function updateTranscribeButton(){const el=document.getElementById('btnTranscribe'),status=document.getElementById('transcribeStatus');el.disabled=!(state.transcriptionFile&&status.textContent.includes('就绪'))}
+async function startTranscription(){if(!state.transcriptionFile){toast('请先上传视频或音频','error');return}const form=new FormData();form.append('media',state.transcriptionFile);form.append('model',document.getElementById('transcribeModel').value);form.append('language',document.getElementById('transcribeLanguage').value);const btn=document.getElementById('btnTranscribe'),status=document.getElementById('transcribeStatus');btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 生成中…';status.innerHTML='<span class="spinner"></span> 正在提交…';try{const resp=await fetch('/api/transcribe',{method:'POST',body:form});const result=await resp.json();if(!resp.ok)throw new Error(result.error||'请求失败');state.transcriptionJobId=result.job_id;await pollTranscription(result.job_id)}catch(e){btn.disabled=false;btn.innerHTML='✨ 生成字幕';status.innerHTML='<span class="fail">● 生成失败</span>';toast('❌ '+e.message,'error')}}
+async function pollTranscription(jobId){const btn=document.getElementById('btnTranscribe'),status=document.getElementById('transcribeStatus');const iv=setInterval(async()=>{try{const r=await fetch('/api/transcribe/'+jobId+'/progress');const d=await r.json();if(d.status==='loading'||d.status==='running'){status.innerHTML='<span class="spinner"></span> '+(d.message||'识别中…')}else if(d.status==='done'){clearInterval(iv);status.innerHTML='<span class="ok">● 已生成 '+(d.segment_count||0)+' 段字幕</span>';btn.disabled=false;btn.innerHTML='✨ 重新生成';const srtResp=await fetch('/api/transcribe/'+jobId+'/srt');const srtText=await srtResp.text();handleSubtitleText(srtText,'自动生成字幕.srt');toast('✅ 字幕已生成并载入时间轴','success')}else if(d.status==='error'){clearInterval(iv);btn.disabled=false;btn.innerHTML='✨ 重新生成';status.innerHTML='<span class="fail">● 生成失败</span>';toast('❌ '+(d.error||'识别失败'),'error')}}catch(e){}},1000)}
+
 function parseSRT(text){
   const blocks=text.trim().replace(/\r\n/g,'\n').split(/\n\n+/);
   return blocks.map(block=>{
@@ -343,7 +378,8 @@ function parseSRT(text){
 function tcToMs(s){const p=s.trim().split(/[:.]/);if(p.length<4)return 0;return (+p[0]*3600+ +p[1]*60+ +p[2])*1000+ +p[3].padEnd(3,'0').slice(0,3)}
 function msToTc(ms){const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000),sec=Math.floor((ms%60000)/1000),cs=Math.floor((ms%1000)/10);return `${pad(h)}:${pad(m)}:${pad(sec)}.${pad(cs)}`;function pad(n){return String(n).padStart(2,'0')}}
 
-function handleFile(file){if(!file)return;document.getElementById('fileName').textContent=file.name;document.getElementById('uploadArea').classList.add('has-file');const r=new FileReader();r.onload=e=>{state.segments=parseSRT(e.target.result);state.cutSet=new Set();renderTimeline();updateStats();document.getElementById('btnAuto').disabled=false;document.getElementById('btnClear').disabled=false;toast('✅ 已导入 '+state.segments.length+' 条字幕段','success')};r.readAsText(file,'UTF-8')}
+function handleFile(file){if(!file)return;const r=new FileReader();r.onload=e=>handleSubtitleText(e.target.result,file.name);r.readAsText(file,'UTF-8')}
+function handleSubtitleText(text,name){document.getElementById('fileName').textContent=name||'字幕文件';document.getElementById('uploadArea').classList.add('has-file');state.segments=parseSRT(text);state.cutSet=new Set();renderTimeline();updateStats();document.getElementById('btnAuto').disabled=false;document.getElementById('btnClear').disabled=false;toast('✅ 已载入 '+state.segments.length+' 条字幕段','success')}
 function handleVideo(file){if(!file)return;state.videoFile=file;document.getElementById('videoFileName').textContent=file.name;document.getElementById('videoZone').classList.add('has-file');updateCutButton()}
 function updateCutButton(){document.getElementById('btnCut').disabled=!(state.videoFile&&state.cutSet.size>0)}
 
