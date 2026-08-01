@@ -27,6 +27,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font:14px/1.6 var(-
 .mode-card p{font-size:12px;color:var(--text2);line-height:1.7}
 .mode-card .mode-action{margin-top:auto;padding-top:18px;color:var(--accent);font-size:12px;font-weight:600}
 .mode-note{text-align:center;color:var(--text3);font-size:11px;margin-top:18px}
+.mode-note a{color:var(--accent);text-decoration:none}.mode-note a:hover{text-decoration:underline}
 .smart-workspace{position:fixed;inset:0;background:var(--bg);z-index:250;overflow:auto;padding:34px 22px}
 .smart-workspace.hidden{display:none}
 .smart-inner{width:min(920px,100%);margin:0 auto}
@@ -460,6 +461,10 @@ const state = {
 
 function init(){
   applyTheme();
+  if(location.hostname.endsWith('github.io')){
+    document.title='SRT Cutter - 静态演示';
+    document.querySelector('.mode-note').innerHTML='静态演示页面，仅用于预览界面 · <a href="https://github.com/chenzhenzhen2077/srtcut" target="_blank" rel="noopener">下载 Mac 本地版</a>';
+  }
   document.getElementById('modeChooser').classList.remove('hidden');
   document.getElementById('smartWorkspace').classList.add('hidden');
   document.getElementById('audioWorkspace').classList.add('hidden');
