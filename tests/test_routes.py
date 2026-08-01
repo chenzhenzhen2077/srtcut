@@ -59,7 +59,7 @@ def test_transcription_rejects_missing_media(tmp_path):
     assert response.status_code in (400, 503)
 
 
-def test_smart_analyze_returns_proposals(tmp_path):
+def test_smart_analyze_requires_semantic_ai(tmp_path):
     app = create_app({"TESTING": True, "WORK_DIR": tmp_path / "work", "BIN_DIR": tmp_path / "bin"})
     client = app.test_client()
     srt = "1\n00:00:00,000 --> 00:00:02,000\n第一段\n\n2\n00:00:02,000 --> 00:00:04,000\n第二段\n\n3\n00:00:04,000 --> 00:00:06,000\n第三段\n\n4\n00:00:06,000 --> 00:00:08,000\n第四段\n"
@@ -68,10 +68,44 @@ def test_smart_analyze_returns_proposals(tmp_path):
         data={"video": (io.BytesIO(b"fake-video"), "sample.mp4"), "srt": srt},
         content_type="multipart/form-data",
     )
+    assert response.status_code == 503
+    data = response.get_json()
+    assert data["code"] == "ai_unavailable"
+    assert "精简剪辑" in data["error"]
+
+
+def test_check_ai_is_explicit_when_not_configured(tmp_path):
+    app = create_app({"TESTING": True, "WORK_DIR": tmp_path / "work", "BIN_DIR": tmp_path / "bin"})
+    response = app.test_client().get("/api/check-ai")
     assert response.status_code == 200
     data = response.get_json()
-    assert data["project_id"]
-    assert len(data["proposals"]) >= 2
+    assert data["available"] is False
+    assert "尚未配置" in data["message"]
+
+
+def test_prepare_media_project_builds_shared_decision(tmp_path):
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+    project_id = "abcdef123456"
+    (work_dir / f"{project_id}_podcast_input.mp3").write_bytes(b"fake-audio")
+    (work_dir / f"{project_id}_transcript.srt").write_text(
+        "1\n00:00:00,000 --> 00:00:02,000\n开始\n\n"
+        "2\n00:00:05,000 --> 00:00:06,000\n嗯\n",
+        encoding="utf-8",
+    )
+    (work_dir / f"{project_id}_media.json").write_text(
+        '{"project_id":"abcdef123456","original_name":"sample.mp3",'
+        '"source_kind":"audio","stored_name":"abcdef123456_podcast_input.mp3"}',
+        encoding="utf-8",
+    )
+    app = create_app({"TESTING": True, "WORK_DIR": work_dir, "BIN_DIR": tmp_path / "bin"})
+    response = app.test_client().post(f"/api/media/{project_id}/prepare")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["source_kind"] == "audio"
+    assert data["ai_available"] is False
+    assert len(data["segments"]) == 2
+    assert len(data["suggestions"]) == 2
 
 
 def test_audio_analyze_returns_suggestions(tmp_path):

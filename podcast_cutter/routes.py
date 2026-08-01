@@ -16,9 +16,10 @@ from .media import (
     install_ffmpeg_tools,
     normalize_cuts,
     run_ffmpeg_cut,
+    write_progress,
 )
 from .project import create_edit_decision, load_edit_decision, run_podcast_exports
-from .smart import generate_proposals, parse_srt, summarize_content
+from .smart import parse_srt
 from .speech import faster_whisper_available, transcribe_to_srt
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,31 @@ def _find_podcast_input(project_id):
     return decision, source_path if source_path.is_file() else None
 
 
+def _find_raw_podcast_input(project_id):
+    work_dir = Path(current_app.config["WORK_DIR"])
+    allowed = (
+        ".mp4",
+        ".mov",
+        ".mkv",
+        ".avi",
+        ".webm",
+        ".mp3",
+        ".wav",
+        ".m4a",
+        ".aac",
+        ".flac",
+        ".ogg",
+    )
+    return next(
+        (
+            work_dir / f"{project_id}_podcast_input{suffix}"
+            for suffix in allowed
+            if (work_dir / f"{project_id}_podcast_input{suffix}").is_file()
+        ),
+        None,
+    )
+
+
 def _is_valid_job_id(job_id):
     return len(job_id) == current_app.config["JOB_ID_LENGTH"] and all(
         char in "0123456789abcdef" for char in job_id
@@ -126,6 +152,18 @@ def check_transcription():
             "available": faster_whisper_available(),
             "model": current_app.config["WHISPER_MODEL"],
             "install_hint": "python -m pip install -e '.[speech]'",
+        }
+    )
+
+
+@api.get("/api/check-ai")
+def check_ai():
+    available = bool(current_app.config["AI_API_KEY"])
+    return jsonify(
+        {
+            "available": available,
+            "model": current_app.config["AI_MODEL"] if available else None,
+            "message": "智能内容分析已开通" if available else "智能内容分析服务尚未配置",
         }
     )
 
@@ -229,6 +267,91 @@ def download_transcript(job_id):
     if output_path.is_file():
         return send_file(str(output_path), as_attachment=True, download_name="自动生成字幕.srt")
     return jsonify({"error": "字幕未就绪"}), 404
+
+
+@api.post("/api/media/start")
+def start_media_project():
+    if not faster_whisper_available():
+        return jsonify({"error": "本地字幕功能尚未安装"}), 503
+    if "media" not in request.files:
+        return jsonify({"error": "请上传音频或视频文件"}), 400
+
+    media = request.files["media"]
+    original_name = Path(media.filename or "media").name
+    extension = Path(original_name).suffix.lower()
+    audio_extensions = {".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg"}
+    video_extensions = {".mp4", ".mov", ".mkv", ".avi", ".webm"}
+    if extension not in audio_extensions | video_extensions:
+        return jsonify({"error": "不支持的素材格式"}), 400
+    model_name = request.form.get("model", current_app.config["WHISPER_MODEL"])
+    if model_name not in {"tiny", "base", "small", "medium", "large-v3", "distil-large-v3"}:
+        return jsonify({"error": "字幕识别质量参数无效"}), 400
+    language = request.form.get("language", "").strip() or None
+
+    project_id = uuid.uuid4().hex[: current_app.config["JOB_ID_LENGTH"]]
+    source_path = _podcast_input_path(project_id, extension)
+    output_path = Path(current_app.config["WORK_DIR"]) / f"{project_id}_transcript.srt"
+    progress_path = Path(current_app.config["WORK_DIR"]) / f"{project_id}_transcribe_progress.json"
+    metadata_path = Path(current_app.config["WORK_DIR"]) / f"{project_id}_media.json"
+    media.save(source_path)
+    source_kind = "video" if extension in video_extensions else "audio"
+    write_progress(
+        metadata_path,
+        {
+            "project_id": project_id,
+            "original_name": original_name,
+            "source_kind": source_kind,
+            "stored_name": source_path.name,
+        },
+    )
+    worker = threading.Thread(
+        target=transcribe_to_srt,
+        args=(source_path, output_path, progress_path, project_id, model_name, language, False),
+        daemon=True,
+        name=f"media-transcribe-{project_id}",
+    )
+    worker.start()
+    return jsonify({"project_id": project_id, "job_id": project_id, "source_kind": source_kind})
+
+
+@api.post("/api/media/<project_id>/prepare")
+def prepare_media_project(project_id):
+    if not _is_valid_job_id(project_id):
+        return jsonify({"error": "项目 ID 无效"}), 400
+    work_dir = Path(current_app.config["WORK_DIR"])
+    source_path = _find_raw_podcast_input(project_id)
+    transcript_path = work_dir / f"{project_id}_transcript.srt"
+    metadata_path = work_dir / f"{project_id}_media.json"
+    if source_path is None or not transcript_path.is_file() or not metadata_path.is_file():
+        return jsonify({"error": "字幕尚未生成完成"}), 409
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        transcript = transcript_path.read_text(encoding="utf-8")
+    except (OSError, json.JSONDecodeError):
+        return jsonify({"error": "素材项目信息损坏"}), 500
+    segments = parse_srt(transcript)
+    if not segments:
+        return jsonify({"error": "没有识别到可用字幕"}), 400
+    suggestions = analyze_audio_segments(segments)
+    decision = create_edit_decision(
+        work_dir,
+        project_id,
+        source_path,
+        metadata["source_kind"],
+        metadata["original_name"],
+        segments,
+        suggestions,
+    )
+    return jsonify(
+        {
+            "project_id": project_id,
+            "source_kind": decision["source"]["kind"],
+            "segments": segments,
+            "suggestions": suggestions,
+            "transcript": transcript,
+            "ai_available": bool(current_app.config["AI_API_KEY"]),
+        }
+    )
 
 
 @api.post("/api/audio/analyze")
@@ -353,11 +476,12 @@ def render_podcast():
         )
         outputs = payload.get("outputs", ["audio"])
         quality = payload.get("quality", "medium")
+        allow_unchanged = payload.get("allow_unchanged") is True
     except (TypeError, KeyError, ValueError, json.JSONDecodeError):
         return jsonify({"error": "播客导出参数无效"}), 400
     if not _is_valid_job_id(project_id):
         return jsonify({"error": "项目 ID 无效"}), 400
-    if not cuts:
+    if not cuts and not allow_unchanged:
         return jsonify({"error": "请至少选择一处需要删除的片段"}), 400
     if not isinstance(outputs, list) or not outputs or any(
         output not in {"audio", "video"} for output in outputs
@@ -440,41 +564,46 @@ def podcast_download(output_name, project_id):
 
 @api.post("/api/smart/analyze")
 def smart_analyze():
-    if "video" not in request.files:
-        return jsonify({"error": "请上传视频文件"}), 400
-    transcript = request.form.get("srt", "")
-    segments = parse_srt(transcript)
+    if not current_app.config["AI_API_KEY"]:
+        return (
+            jsonify(
+                {
+                    "error": "智能内容分析服务尚未配置，请使用精简剪辑",
+                    "code": "ai_unavailable",
+                }
+            ),
+            503,
+        )
+    try:
+        payload = request.get_json(force=True)
+        project_id = payload["project_id"]
+    except (TypeError, KeyError, ValueError, json.JSONDecodeError):
+        return jsonify({"error": "智能分析项目参数无效"}), 400
+    if not _is_valid_job_id(project_id):
+        return jsonify({"error": "项目 ID 无效"}), 400
+    decision = load_edit_decision(current_app.config["WORK_DIR"], project_id)
+    if decision is None:
+        return jsonify({"error": "请先完成素材上传和字幕生成"}), 404
+    segments = decision.get("segments", [])
     if len(segments) < 2:
-        return jsonify({"error": "字幕内容太少，无法生成剪辑方案"}), 400
-    media = request.files["video"]
-    extension = Path(media.filename or ".mp4").suffix.lower() or ".mp4"
-    allowed = {".mp4", ".mov", ".mkv", ".avi", ".webm"}
-    if extension not in allowed:
-        return jsonify({"error": "智能剪辑目前只支持视频文件"}), 400
-    project_id = uuid.uuid4().hex[: current_app.config["JOB_ID_LENGTH"]]
-    input_path, _output_path = _smart_paths(project_id, extension)
-    media.save(input_path)
-    mode = "basic"
-    proposals = generate_proposals(segments)
-    understanding = summarize_content(segments)
-    if current_app.config["AI_API_KEY"]:
-        try:
-            understanding, proposals = generate_ai_proposals(
-                segments,
-                current_app.config["AI_API_KEY"],
-                current_app.config["AI_BASE_URL"],
-                current_app.config["AI_MODEL"],
-            )
-            mode = "ai"
-        except Exception:
-            logger.exception("Semantic proposal generation failed; using local fallback")
+        return jsonify({"error": "字幕内容太少，无法生成智能方案"}), 400
+    try:
+        understanding, proposals = generate_ai_proposals(
+            segments,
+            current_app.config["AI_API_KEY"],
+            current_app.config["AI_BASE_URL"],
+            current_app.config["AI_MODEL"],
+        )
+    except Exception:
+        logger.exception("Semantic proposal generation failed")
+        return jsonify({"error": "智能内容分析失败，请稍后重试或进入精简剪辑"}), 502
     return jsonify(
         {
             "project_id": project_id,
             "proposals": proposals,
             "understanding": understanding,
             "segment_count": len(segments),
-            "generation_mode": mode,
+            "generation_mode": "ai",
         }
     )
 

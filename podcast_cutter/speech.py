@@ -46,7 +46,15 @@ def format_srt_timestamp(seconds):
     return f"{hours:02d}:{minutes:02d}:{seconds:02d},{milliseconds:03d}"
 
 
-def transcribe_to_srt(input_path, output_path, progress_path, job_id, model_name="small", language=None):
+def transcribe_to_srt(
+    input_path,
+    output_path,
+    progress_path,
+    job_id,
+    model_name="small",
+    language=None,
+    cleanup_input=True,
+):
     """Transcribe a media file and write standard SRT output."""
     input_path = Path(input_path)
     output_path = Path(output_path)
@@ -97,7 +105,8 @@ def transcribe_to_srt(input_path, output_path, progress_path, job_id, model_name
         logger.exception("Transcription job failed")
         write_progress(progress_path, {"status": "error", "error": str(exc)})
     finally:
-        try:
-            input_path.unlink(missing_ok=True)
-        except OSError:
-            logger.warning("Unable to remove transcription input: %s", input_path)
+        if cleanup_input:
+            try:
+                input_path.unlink(missing_ok=True)
+            except OSError:
+                logger.warning("Unable to remove transcription input: %s", input_path)

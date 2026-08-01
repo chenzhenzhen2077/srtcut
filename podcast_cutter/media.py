@@ -117,9 +117,7 @@ def build_ffmpeg_command(ffmpeg_path, input_path, output_path, cuts, quality, ke
     if keep:
         selectors.append(f'between(t,{keep["start"]:.6f},{keep["end"]:.6f})')
     selectors.extend(f'not(between(t,{cut["start"]:.6f},{cut["end"]:.6f}))' for cut in cuts)
-    expression = "*".join(selectors)
-    if not expression:
-        raise ValueError("至少需要一个保留范围或剪辑范围")
+    expression = "*".join(selectors) or "1"
     video_filters = [f"select='{expression}'", "setpts=N/FRAME_RATE/TB"]
     if encoder_available(ffmpeg_path, "h264_videotoolbox"):
         video_options = {

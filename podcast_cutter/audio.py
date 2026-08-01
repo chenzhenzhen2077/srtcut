@@ -39,7 +39,9 @@ def analyze_audio_segments(segments, silence_threshold=1.5):
 
 def build_audio_export_command(ffmpeg_path, input_path, output_path, cuts):
     """Create an MP3 command that keeps all non-marked audio ranges."""
-    expression = "*".join(f'not(between(t,{cut["start"]:.6f},{cut["end"]:.6f}))' for cut in cuts)
+    expression = "*".join(
+        f'not(between(t,{cut["start"]:.6f},{cut["end"]:.6f}))' for cut in cuts
+    ) or "1"
     return [
         ffmpeg_path,
         "-i",

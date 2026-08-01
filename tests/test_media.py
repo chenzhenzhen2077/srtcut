@@ -22,3 +22,8 @@ def test_fast_quality_keeps_one_combined_video_filter():
     assert "select=" in command[vf_indexes[0] + 1]
     assert "scale=1280:-2" in command[vf_indexes[0] + 1]
 
+
+def test_video_command_can_export_unchanged_source():
+    command = build_ffmpeg_command("ffmpeg", "input.mp4", "output.mp4", [], "medium")
+    vf_index = command.index("-vf")
+    assert "select='1'" in command[vf_index + 1]

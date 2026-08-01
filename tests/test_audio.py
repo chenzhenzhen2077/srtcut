@@ -24,3 +24,8 @@ def test_audio_command_outputs_mp3():
     assert command[0] == "ffmpeg"
     assert "libmp3lame" in command
     assert command[-1] == "output.mp3"
+
+
+def test_audio_command_can_export_unchanged_source():
+    command = build_audio_export_command("ffmpeg", "input.wav", "output.mp3", [])
+    assert any("aselect='1'" in value for value in command)

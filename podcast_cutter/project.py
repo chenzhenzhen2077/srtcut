@@ -107,8 +107,6 @@ def run_podcast_exports(
     try:
         duration = probe_duration(ffprobe_path, source_path)
         cuts = normalize_cuts(cuts, duration=duration)
-        if not cuts:
-            raise ValueError("没有有效的剪辑段")
 
         decision["cuts"] = cuts
         for output_name in requested_outputs:
