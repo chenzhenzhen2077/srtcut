@@ -7,6 +7,7 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#121318;--bg2:#1a1c23;--bg3:#22242e;--bg4:#2a2d3a;--text:#e2e4ea;--text2:#9ea0ae;--text3:#6b6e7e;--accent:#6c8cff;--accent2:#4a6cd4;--danger:#ff5c6c;--danger-bg:#2a1520;--warn:#ffb347;--warn-bg:#2d2215;--ok:#4caf80;--radius:8px;--radius-sm:4px;--font:-apple-system,BlinkMacSystemFont,"SF Pro","Segoe UI",sans-serif;--mono:"SF Mono","Fira Code","Cascadia Code",monospace;--sidebar-w:280px;--cutpanel-w:300px;--header-h:48px}
+body.light{--bg:#f5f7fb;--bg2:#ffffff;--bg3:#edf1f7;--bg4:#d9e0eb;--text:#202735;--text2:#5e6878;--text3:#8792a3;--accent:#466ee8;--accent2:#3157c7;--danger:#d94757;--danger-bg:#fdecef;--warn:#b87808;--warn-bg:#fff5dc;--ok:#218653}
 html,body{height:100%;background:var(--bg);color:var(--text);font:14px/1.6 var(--font)}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg2)}
@@ -38,6 +39,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font:14px/1.6 var(-
 .smart-upload .icon{font-size:30px;margin-bottom:6px}.smart-upload p{font-size:12px;color:var(--text2)}
 .smart-file{color:var(--accent);font-size:12px;margin-top:7px;display:none}.smart-upload.has-file .smart-file{display:block}
 .smart-status{font-size:12px;color:var(--text2);margin-top:10px;min-height:20px}
+.smart-file-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.smart-file-meta span{background:var(--bg4);border-radius:var(--radius-sm);padding:3px 7px;font-size:10px;color:var(--text2)}
+.smart-guidance{background:var(--warn-bg);border-left:3px solid var(--warn);border-radius:var(--radius-sm);padding:8px 10px;margin-top:9px;font-size:11px;color:var(--text2);line-height:1.6}
+.smart-guidance strong{color:var(--warn)}
+.theme-toggle{min-width:28px;padding:3px 7px}
 .smart-actions{display:flex;gap:8px;margin-top:12px}
 .proposal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .proposal{background:var(--bg2);border:1px solid var(--bg4);border-radius:var(--radius-sm);padding:14px;display:flex;flex-direction:column;min-height:210px}
@@ -202,11 +208,13 @@ input[type=file]{display:none}
 </div>
 <div class="smart-workspace hidden" id="smartWorkspace">
   <div class="smart-inner">
-    <div class="smart-top"><button class="btn btn-outline btn-small" onclick="showModeChooser()">← 返回</button><div><h1>✨ 智能剪辑</h1><p>上传视频，自动生成字幕、清理口癖并推荐内容片段</p></div></div>
+    <div class="smart-top"><button class="btn btn-outline btn-small" onclick="showModeChooser()">← 返回</button><div><h1>✨ 智能剪辑</h1><p>上传视频，自动生成字幕、清理口癖并推荐内容片段</p></div><button class="btn btn-outline btn-small theme-toggle" onclick="toggleTheme()" title="切换日间/夜间主题" id="smartThemeToggle">☀</button></div>
     <div class="smart-step">
       <h2>1. 上传视频</h2>
       <div class="smart-upload" id="smartUpload" onclick="document.getElementById('smartInput').click()"><div class="icon">🎬</div><p>点击或拖拽上传视频</p><div class="smart-file" id="smartFileName"></div></div>
       <input type="file" id="smartInput" accept="video/*" onchange="handleSmartVideo(this.files[0])">
+      <div class="smart-file-meta" id="smartFileMeta" style="display:none"><span id="smartFileSize"></span><span id="smartFileDuration"></span><span id="smartFileEta"></span></div>
+      <div class="smart-guidance"><strong>上传建议：</strong>推荐单个视频不超过 500MB、10 分钟。超过 500MB 或 10 分钟仍可处理，但本机识别可能需要较长时间；超过 1GB 建议先切成 5-10 分钟片段分段处理。</div>
       <div class="smart-status" id="smartStatus">准备开始</div>
       <div class="smart-actions"><button class="btn btn-primary" id="smartStart" onclick="startSmartEditing()" disabled>开始智能分析</button></div>
     </div>
@@ -220,6 +228,7 @@ input[type=file]{display:none}
     <span class="badge">v2.1</span>
     <div class="header-actions">
       <button class="btn btn-outline btn-small" onclick="showModeChooser()">切换模式</button>
+      <button class="btn btn-outline btn-small theme-toggle" onclick="toggleTheme()" title="切换日间/夜间主题" id="themeToggle">☀</button>
       <button class="btn btn-outline btn-small" onclick="showQuickTour()">使用说明</button>
       <button class="btn btn-outline btn-small" onclick="openExportModal()">📋 导出剪辑单</button>
       <button class="btn btn-primary btn-small" onclick="openAiModal()">🤖 AI 分析</button>
@@ -379,10 +388,11 @@ const AI_PROVIDERS = {
 const state = {
   segments: [], cutSet: new Set(),
   fillerWords: ['嗯','啊','呃','就是','然后','那个','这个','对吧','是吧','其实','所以说','然后呢','就是说','基本上','完了','然后就是说','然后就是','um','uh','er','like','you know','actually','basically','sort of','kind of','i mean','right','so'],
-  activeFillers: new Set(), videoFile: null, transcriptionFile: null, transcriptionJobId: null, jobId: null, _aiCuts: null, mode: localStorage.getItem('srt_cutter_mode') || null,
+  activeFillers: new Set(), videoFile: null, transcriptionFile: null, transcriptionJobId: null, jobId: null, _aiCuts: null, mode: localStorage.getItem('srt_cutter_mode') || null, theme: localStorage.getItem('srt_cutter_theme') || 'light', smartVideo: null, smartDuration: null,
 };
 
 function init(){
+  applyTheme();
   if(state.mode)document.getElementById('modeChooser').classList.add('hidden');
   if(state.mode==='smart')document.getElementById('smartWorkspace').classList.remove('hidden');
   renderFillerTags();
@@ -404,9 +414,15 @@ function init(){
   tz.addEventListener('drop',e=>{e.preventDefault();tz.classList.remove('dragover');if(e.dataTransfer.files[0])handleTranscribeMedia(e.dataTransfer.files[0])});
 }
 
+function applyTheme(){document.body.classList.toggle('light',state.theme==='light');const icon=state.theme==='light'?'☾':'☀';document.querySelectorAll('.theme-toggle').forEach(el=>el.textContent=icon)}
+function toggleTheme(){state.theme=state.theme==='light'?'dark':'light';localStorage.setItem('srt_cutter_theme',state.theme);applyTheme()}
 function selectMode(mode){state.mode=mode;localStorage.setItem('srt_cutter_mode',mode);document.getElementById('modeChooser').classList.add('hidden');document.getElementById('smartWorkspace').classList.toggle('hidden',mode!=='smart');toast(mode==='smart'?'✨ 已进入智能剪辑':'🎛 已进入精细剪辑','success')}
 function showModeChooser(){document.getElementById('modeChooser').classList.remove('hidden');document.getElementById('smartWorkspace').classList.add('hidden')}
-function handleSmartVideo(file){if(!file)return;state.smartVideo=file;document.getElementById('smartFileName').textContent=file.name;document.getElementById('smartUpload').classList.add('has-file');document.getElementById('smartStart').disabled=false;document.getElementById('smartStatus').textContent='视频已选择，可以开始分析'}
+function formatFileSize(bytes){if(bytes<1024*1024)return (bytes/1024).toFixed(0)+' KB';if(bytes<1024*1024*1024)return (bytes/1024/1024).toFixed(0)+' MB';return (bytes/1024/1024/1024).toFixed(2)+' GB'}
+function formatEta(seconds){if(seconds<60)return '预计 '+Math.max(1,Math.round(seconds))+' 秒';const minutes=Math.round(seconds/60);return '预计 '+(minutes<60?minutes+' 分钟':Math.floor(minutes/60)+' 小时 '+minutes%60+' 分钟')}
+function estimateSmartSeconds(file,duration){const sizeMb=file.size/1024/1024;return Math.max(45,(duration||180)*1.7+sizeMb*.35+30)}
+function handleSmartVideo(file){if(!file)return;state.smartVideo=file;document.getElementById('smartFileName').textContent=file.name;document.getElementById('smartUpload').classList.add('has-file');const meta=document.getElementById('smartFileMeta');meta.style.display='flex';document.getElementById('smartFileSize').textContent='文件 '+formatFileSize(file.size);document.getElementById('smartFileDuration').textContent='正在读取时长…';document.getElementById('smartFileEta').textContent='预计处理中…';const probe=document.createElement('video');probe.preload='metadata';probe.onloadedmetadata=()=>{state.smartDuration=probe.duration;URL.revokeObjectURL(probe.src);document.getElementById('smartFileDuration').textContent='时长 '+formatDuration(probe.duration);document.getElementById('smartFileEta').textContent=formatEta(estimateSmartSeconds(file,probe.duration))+'（本机估算）';document.getElementById('smartStatus').textContent=probe.duration>600||file.size>500*1024*1024?'视频已选择，建议先切分后处理':'视频已选择，可以开始分析'};probe.onerror=()=>{document.getElementById('smartFileDuration').textContent='时长未知';document.getElementById('smartFileEta').textContent='预计时间取决于视频内容';document.getElementById('smartStatus').textContent='视频已选择，可以开始分析'};probe.src=URL.createObjectURL(file);document.getElementById('smartStart').disabled=false}
+function formatDuration(seconds){const total=Math.round(seconds),m=Math.floor(total/60),s=total%60;return m?m+'分'+String(s).padStart(2,'0')+'秒':s+'秒'}
 async function startSmartEditing(){if(!state.smartVideo)return;const btn=document.getElementById('smartStart'),status=document.getElementById('smartStatus');btn.disabled=true;status.innerHTML='<span class="spinner"></span> 正在生成字幕…';try{const form=new FormData();form.append('media',state.smartVideo);form.append('model','small');form.append('language','');const resp=await fetch('/api/transcribe',{method:'POST',body:form});const result=await resp.json();if(!resp.ok)throw new Error(result.error||'字幕生成失败');await pollSmartTranscription(result.job_id)}catch(e){btn.disabled=false;status.textContent='分析失败：'+e.message;toast('❌ '+e.message,'error')}}
 async function pollSmartTranscription(jobId){const status=document.getElementById('smartStatus');const iv=setInterval(async()=>{try{const r=await fetch('/api/transcribe/'+jobId+'/progress');const d=await r.json();if(d.status==='loading'||d.status==='running'){status.innerHTML='<span class="spinner"></span> '+(d.message||'识别中…')}else if(d.status==='done'){clearInterval(iv);status.innerHTML='<span class="spinner"></span> 正在分析内容…';const srt=await (await fetch('/api/transcribe/'+jobId+'/srt')).text();const form=new FormData();form.append('video',state.smartVideo);form.append('srt',srt);const ar=await fetch('/api/smart/analyze',{method:'POST',body:form});const data=await ar.json();if(!ar.ok)throw new Error(data.error||'内容分析失败');state.smartProjectId=data.project_id;renderProposals(data.proposals);status.textContent='已生成 '+data.proposals.length+' 个内容方案，请选择一个'}else if(d.status==='error'){clearInterval(iv);throw new Error(d.error||'字幕生成失败')}}catch(e){clearInterval(iv);document.getElementById('smartStart').disabled=false;status.textContent='分析失败：'+e.message;toast('❌ '+e.message,'error')}},1000)}
 function renderProposals(proposals){document.getElementById('proposalStep').style.display='block';document.getElementById('proposalGrid').innerHTML=proposals.map((p,i)=>'<div class="proposal"><h3>'+esc(p.title)+'</h3><div class="hook">'+esc(p.hook)+'</div><div class="summary">'+esc(p.summary)+'</div><div class="meta">'+msToTc(p.start*1000)+' → '+msToTc(p.end*1000)+' · '+p.duration.toFixed(1)+' 秒</div><button class="btn btn-primary btn-small" onclick="chooseProposal('+i+')">选择这个方案</button></div>').join('');state.smartProposals=proposals}
