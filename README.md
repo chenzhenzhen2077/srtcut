@@ -1,6 +1,28 @@
 # SRT Cutter
 
-本地优先的播客字幕分析与视频剪辑工具。当前版本支持：
+本地运行的播客字幕分析与视频剪辑工具。把这个 GitHub 仓库下载到自己的电脑上，就可以像开发者一样运行完整功能；视频、字幕、Whisper 识别和 FFmpeg 剪辑都在本机完成，不需要购买云服务器。
+
+## 给种子用户
+
+当前推荐使用 macOS。安装 Python 3.10 或更高版本后：
+
+1. 打开仓库页面，点击 **Code → Download ZIP**，解压项目。
+2. 双击项目里的 `start.command`。
+3. 第一次启动会自动创建 Python 环境并安装依赖，完成后自动打开 `http://127.0.0.1:8964`。
+4. 如果 macOS 不允许双击启动，在项目目录的终端执行：
+
+```bash
+chmod +x start.command
+./start.command
+```
+
+首次使用自动字幕会下载 Whisper 模型，首次安装和模型下载可能需要一些时间。视频处理需要 FFmpeg；页面会在本机缺少 FFmpeg 时提供安装按钮，安装文件保存到项目自己的 `bin/` 目录。关闭启动脚本打开的终端窗口即可停止服务。
+
+默认单个上传文件上限为 2GB。超过上限时页面会立即提示先压缩或分段；本机磁盘空间充足的高级用户可以在 `.env` 中设置 `PODCAST_CUTTER_MAX_UPLOAD_MB` 调高限制。
+
+在线 AI 不共用开发者的 Key。用户生成字幕后，在页面的“在线 AI”设置里填写自己的服务地址、模型和 API Key；Key 只保留在当前本地服务内存中。也可以在本机启动 Ollama，使用自己的本地模型。
+
+## 功能
 
 - 导入 SRT 字幕并生成时间轴
 - 上传视频或音频，使用本地 Whisper 自动生成 SRT
@@ -19,9 +41,9 @@
 
 音频和视频使用同一份服务端剪辑决定（`cuts`），因此两个输出的内容时间点保持一致。这个项目记录也为后续的账号隔离、任务队列和 AI 用量计费预留了接口。
 
-## 本地运行
+## 手动本地运行
 
-需要 Python 3.10 或更高版本，以及可用的 `ffmpeg` 和 `ffprobe`。项目会优先使用 `bin/` 下的本地二进制，其次使用系统 PATH。
+需要 Python 3.10 或更高版本。项目会优先使用 `bin/` 下的本地二进制，其次使用系统 PATH；macOS 用户也可以直接使用页面里的 FFmpeg 安装按钮。
 
 ```bash
 cd srt-cutter
@@ -79,9 +101,9 @@ pytest
 
 健康检查地址为 `/health`，会同时报告 FFmpeg 和 FFprobe 状态。
 
-## 线上部署
+## 可选：线上部署
 
-仓库已包含 `Dockerfile`、`Procfile` 和 Render Blueprint 示例 `render.yaml`。推荐使用 Docker 部署，镜像会安装 FFmpeg，并用 Gunicorn 启动 `app:app`。
+仓库保留了 `Dockerfile`、`Procfile` 和 Render Blueprint 示例 `render.yaml`，用于未来需要云端部署时参考。当前种子用户版本不要求配置 Render，也不建议为了小规模试用产生云端实例费用。
 
 ```bash
 docker build -t podcast-cutter .

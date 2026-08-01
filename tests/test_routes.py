@@ -54,7 +54,27 @@ def test_transcription_status_is_explicit(tmp_path):
     assert response.status_code == 200
     data = response.get_json()
     assert "available" in data
+    assert data["max_upload_mb"] == 2048
     assert data["install_hint"]
+
+
+def test_upload_limit_error_reports_configured_size(tmp_path):
+    app = create_app(
+        {
+            "TESTING": True,
+            "WORK_DIR": tmp_path / "work",
+            "BIN_DIR": tmp_path / "bin",
+            "MAX_CONTENT_LENGTH": 1024 * 1024,
+        }
+    )
+    response = app.test_client().post(
+        "/api/podcast/analyze",
+        data={"media": (io.BytesIO(b"x" * (1024 * 1024 + 1)), "sample.mp4")},
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 413
+    assert response.get_json()["max_upload_mb"] == 1
 
 
 def test_transcription_rejects_missing_media(tmp_path):

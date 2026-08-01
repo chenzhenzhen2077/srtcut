@@ -170,6 +170,7 @@ def check_transcription():
         {
             "available": faster_whisper_available(),
             "model": current_app.config["WHISPER_MODEL"],
+            "max_upload_mb": current_app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
             "install_hint": "python -m pip install -e '.[speech]'",
         }
     )

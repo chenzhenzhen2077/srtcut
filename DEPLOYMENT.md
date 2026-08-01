@@ -1,4 +1,8 @@
-# 线上部署
+# 部署说明
+
+当前种子用户推荐本地运行，不需要 Render 或其他云服务器。请先阅读项目根目录的 `README.md`，macOS 用户直接双击 `start.command` 即可。
+
+下面的内容是未来需要云端部署时的备忘录，不是种子用户的必需步骤。
 
 这个项目是 Flask + FFmpeg + 可选 faster-whisper。线上部署建议先用 Docker，因为容器可以稳定安装 FFmpeg，并避免把本机 `work/`、`bin/`、模型缓存和测试产物打进部署包。
 

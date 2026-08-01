@@ -24,7 +24,11 @@ def create_app(test_config=None):
 
     @app.errorhandler(RequestEntityTooLarge)
     def handle_file_too_large(_error):
-        return jsonify({"error": "上传文件超过大小限制"}), 413
+        return jsonify(
+            {
+                "error": "上传文件超过大小限制",
+                "max_upload_mb": app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+            }
+        ), 413
 
     return app
-
