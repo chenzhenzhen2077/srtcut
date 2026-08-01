@@ -16,7 +16,7 @@ from .media import (
     normalize_cuts,
     run_ffmpeg_cut,
 )
-from .smart import generate_proposals, parse_srt
+from .smart import generate_proposals, parse_srt, summarize_content
 from .speech import faster_whisper_available, transcribe_to_srt
 
 logger = logging.getLogger(__name__)
@@ -226,9 +226,10 @@ def smart_analyze():
     media.save(input_path)
     mode = "basic"
     proposals = generate_proposals(segments)
+    understanding = summarize_content(segments)
     if current_app.config["AI_API_KEY"]:
         try:
-            proposals = generate_ai_proposals(
+            understanding, proposals = generate_ai_proposals(
                 segments,
                 current_app.config["AI_API_KEY"],
                 current_app.config["AI_BASE_URL"],
@@ -241,6 +242,7 @@ def smart_analyze():
         {
             "project_id": project_id,
             "proposals": proposals,
+            "understanding": understanding,
             "segment_count": len(segments),
             "generation_mode": mode,
         }

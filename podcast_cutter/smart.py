@@ -9,6 +9,19 @@ TIMESTAMP_RE = re.compile(
 FILLERS = ("嗯", "啊", "呃", "就是", "然后", "那个", "这个", "对吧", "是吧", "其实", "所以说")
 
 
+def summarize_content(segments):
+    """Provide a transparent local understanding when no semantic provider is configured."""
+    if not segments:
+        return {"topic": "暂时无法判断主题", "summary": "字幕内容不足，无法形成内容概览。", "audience": "暂时无法判断"}
+    text = " ".join(segment["text"] for segment in segments)
+    preview = text[:150]
+    return {
+        "topic": "这是一段以访谈/口述为主的内容",
+        "summary": f"内容从“{preview}”开始，共 {len(segments)} 个字幕片段，建议先从观点完整、上下文较少的片段中选择。",
+        "audience": "适合希望快速了解核心观点的观众",
+    }
+
+
 def parse_srt(text):
     blocks = re.split(r"\n\s*\n", text.replace("\r\n", "\n").strip())
     segments = []

@@ -48,6 +48,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font:14px/1.6 var(-
 .proposal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .proposal{background:var(--bg2);border:1px solid var(--bg4);border-radius:var(--radius-sm);padding:14px;display:flex;flex-direction:column;min-height:210px}
 .proposal h3{font-size:14px;margin-bottom:6px}.proposal .hook{color:var(--accent);font-size:12px;margin-bottom:8px}.proposal .summary{font-size:11px;line-height:1.6;color:var(--text2);flex:1}.proposal .meta{font:10px var(--mono);color:var(--text3);margin:10px 0}.proposal .btn{width:100%}
+.smart-understanding{background:var(--bg2);border-left:3px solid var(--accent);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;font-size:12px;line-height:1.7}.smart-understanding strong{color:var(--accent)}
+.smart-understanding .label{font-size:10px;color:var(--text3);margin-top:6px}
+.fine-guide{background:var(--bg2);border:1px solid var(--bg4);border-radius:var(--radius-sm);padding:10px 11px;font-size:11px;color:var(--text2);line-height:1.7}.fine-guide strong{color:var(--text)}
+.setting-help{font-size:10px;color:var(--text3);line-height:1.5;margin-top:4px}
 @media(max-width:700px){.proposal-grid{grid-template-columns:1fr}.smart-workspace{padding:22px 14px}}
 @media(max-width:600px){.mode-cards{grid-template-columns:1fr}.mode-chooser-title{font-size:23px}}
 .header{height:var(--header-h);display:flex;align-items:center;gap:12px;padding:0 20px;background:var(--bg2);border-bottom:1px solid var(--bg4);flex-shrink:0}
@@ -218,7 +222,7 @@ input[type=file]{display:none}
       <div class="smart-status" id="smartStatus">准备开始</div>
       <div class="smart-actions"><button class="btn btn-primary" id="smartStart" onclick="startSmartEditing()" disabled>开始智能分析</button></div>
     </div>
-    <div class="smart-step" id="proposalStep" style="display:none"><h2>2. 选择一个内容方案</h2><div class="proposal-grid" id="proposalGrid"></div></div>
+    <div class="smart-step" id="proposalStep" style="display:none"><h2>2. 先了解内容，再选择方案</h2><div class="smart-understanding" id="smartUnderstanding"></div><div class="proposal-grid" id="proposalGrid"></div><div class="smart-actions"><button class="btn btn-outline" onclick="rejectSmartProposals()">这些方案都不合适，进入精细剪辑</button></div></div>
     <div class="smart-step" id="smartResult" style="display:none"><h2>3. 导出结果</h2><div class="smart-status" id="smartResultStatus"></div><button class="btn btn-success" id="smartDownload" style="display:none" onclick="downloadSmartResult()">⬇ 下载剪辑视频</button></div>
   </div>
 </div>
@@ -237,6 +241,7 @@ input[type=file]{display:none}
   <div class="body">
     <aside class="sidebar">
       <div class="sidebar-scroll">
+        <div class="fine-guide"><strong>精细剪辑流程</strong><br>① 导入字幕或自动生成字幕<br>② 点击“一键扫描”找出口癖、重复词和长停顿<br>③ 点击字幕段落可手动标记或取消<br>④ 上传视频后导出剪辑结果</div>
         <div class="card">
           <div class="card-title">导入字幕 (SRT)</div>
           <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
@@ -255,7 +260,7 @@ input[type=file]{display:none}
           </div>
           <input type="file" id="transcribeInput" accept="video/*,audio/*,.m4a,.flac,.ogg" onchange="handleTranscribeMedia(this.files[0])">
           <div class="transcribe-options">
-            <select id="transcribeModel" title="识别模型"><option value="tiny">Tiny · 快</option><option value="base">Base</option><option value="small" selected>Small · 推荐</option><option value="medium">Medium · 准</option><option value="large-v3">Large · 最准</option></select>
+            <select id="transcribeModel" title="字幕生成速度与准确度"><option value="tiny">极速：先看效果</option><option value="base">快速：普通准确度</option><option value="small" selected>均衡：推荐</option><option value="medium">准确：等待更久</option><option value="large-v3">最高质量：最慢</option></select>
             <select id="transcribeLanguage" title="识别语言"><option value="">自动语言</option><option value="zh">中文</option><option value="en">English</option><option value="ja">日本語</option><option value="ko">한국어</option></select>
           </div>
           <div class="transcribe-status" id="transcribeStatus"><span>检查本地识别组件…</span></div>
@@ -271,8 +276,10 @@ input[type=file]{display:none}
         </div>
         <div class="card">
           <div class="card-title">扫描设置</div>
-          <div class="card-row"><label>静默检测</label><input type="number" id="silenceThreshold" value="1.5" min="0" max="10" step="0.1"></div>
-          <div class="card-row"><label>检测重复词</label><input type="checkbox" id="highlightRepeat" checked></div>
+          <div class="card-row"><label>长停顿阈值</label><input type="number" id="silenceThreshold" value="1.5" min="0" max="10" step="0.1"></div>
+          <div class="setting-help">两段字幕之间超过这个时间没有说话，就会标记为可能需要删掉的停顿。数值越小，标记越积极。</div>
+          <div class="card-row" style="margin-top:7px"><label>标记重复表达</label><input type="checkbox" id="highlightRepeat" checked></div>
+          <div class="setting-help">发现同一段话里反复出现的词语时，用颜色提醒你检查。</div>
         </div>
         <button class="btn btn-danger btn-full btn-small" onclick="autoDetectAll()" disabled id="btnAuto">🔍 一键扫描口癖</button>
         <button class="btn btn-outline btn-full btn-small" onclick="clearAll()" disabled id="btnClear">🗑 清除标记</button>
@@ -285,8 +292,9 @@ input[type=file]{display:none}
             <p class="vfilename" id="videoFileName"></p>
           </div>
           <input type="file" id="videoInput" accept="video/*" onchange="handleVideo(this.files[0])">
-          <div class="card-row" style="margin-top:6px"><label>画质</label><select id="qualitySelect"><option value="high">高 (8Mbps)</option><option value="medium" selected>中 (5Mbps)</option><option value="fast">快 (3Mbps 720p)</option></select></div>
-          <div class="ffmpeg-status" id="ffmpegStatus"><span>检查 FFmpeg…</span></div>
+          <div class="card-row" style="margin-top:6px"><label>输出质量</label><select id="qualitySelect"><option value="high">高清：文件较大</option><option value="medium" selected>平衡：推荐</option><option value="fast">快速：文件较小</option></select></div>
+          <div class="setting-help">高清更清楚但处理更慢；快速处理更快，适合先看剪辑效果。</div>
+          <div class="ffmpeg-status" id="ffmpegStatus"><span>视频处理功能检查中…</span></div>
           <button class="btn btn-success btn-full btn-small" onclick="startAutoCut()" id="btnCut">✂ 自动剪切去口癖</button>
         </div>
       </div>
@@ -424,8 +432,9 @@ function estimateSmartSeconds(file,duration){const sizeMb=file.size/1024/1024;re
 function handleSmartVideo(file){if(!file)return;state.smartVideo=file;document.getElementById('smartFileName').textContent=file.name;document.getElementById('smartUpload').classList.add('has-file');const meta=document.getElementById('smartFileMeta');meta.style.display='flex';document.getElementById('smartFileSize').textContent='文件 '+formatFileSize(file.size);document.getElementById('smartFileDuration').textContent='正在读取时长…';document.getElementById('smartFileEta').textContent='预计处理中…';const probe=document.createElement('video');probe.preload='metadata';probe.onloadedmetadata=()=>{state.smartDuration=probe.duration;URL.revokeObjectURL(probe.src);document.getElementById('smartFileDuration').textContent='时长 '+formatDuration(probe.duration);document.getElementById('smartFileEta').textContent=formatEta(estimateSmartSeconds(file,probe.duration))+'（本机估算）';document.getElementById('smartStatus').textContent=probe.duration>600||file.size>500*1024*1024?'视频已选择，建议先切分后处理':'视频已选择，可以开始分析'};probe.onerror=()=>{document.getElementById('smartFileDuration').textContent='时长未知';document.getElementById('smartFileEta').textContent='预计时间取决于视频内容';document.getElementById('smartStatus').textContent='视频已选择，可以开始分析'};probe.src=URL.createObjectURL(file);document.getElementById('smartStart').disabled=false}
 function formatDuration(seconds){const total=Math.round(seconds),m=Math.floor(total/60),s=total%60;return m?m+'分'+String(s).padStart(2,'0')+'秒':s+'秒'}
 async function startSmartEditing(){if(!state.smartVideo)return;const btn=document.getElementById('smartStart'),status=document.getElementById('smartStatus');btn.disabled=true;status.innerHTML='<span class="spinner"></span> 正在生成字幕…';try{const form=new FormData();form.append('media',state.smartVideo);form.append('model','small');form.append('language','');const resp=await fetch('/api/transcribe',{method:'POST',body:form});const result=await resp.json();if(!resp.ok)throw new Error(result.error||'字幕生成失败');await pollSmartTranscription(result.job_id)}catch(e){btn.disabled=false;status.textContent='分析失败：'+e.message;toast('❌ '+e.message,'error')}}
-async function pollSmartTranscription(jobId){const status=document.getElementById('smartStatus');const iv=setInterval(async()=>{try{const r=await fetch('/api/transcribe/'+jobId+'/progress');const d=await r.json();if(d.status==='loading'||d.status==='running'){status.innerHTML='<span class="spinner"></span> '+(d.message||'识别中…')}else if(d.status==='done'){clearInterval(iv);status.innerHTML='<span class="spinner"></span> 正在分析内容…';const srt=await (await fetch('/api/transcribe/'+jobId+'/srt')).text();const form=new FormData();form.append('video',state.smartVideo);form.append('srt',srt);const ar=await fetch('/api/smart/analyze',{method:'POST',body:form});const data=await ar.json();if(!ar.ok)throw new Error(data.error||'内容分析失败');state.smartProjectId=data.project_id;renderProposals(data.proposals);status.textContent='已生成 '+data.proposals.length+' 个内容方案，请选择一个'}else if(d.status==='error'){clearInterval(iv);throw new Error(d.error||'字幕生成失败')}}catch(e){clearInterval(iv);document.getElementById('smartStart').disabled=false;status.textContent='分析失败：'+e.message;toast('❌ '+e.message,'error')}},1000)}
-function renderProposals(proposals){document.getElementById('proposalStep').style.display='block';document.getElementById('proposalGrid').innerHTML=proposals.map((p,i)=>'<div class="proposal"><h3>'+esc(p.title)+'</h3><div class="hook">'+esc(p.hook)+'</div><div class="summary">'+esc(p.summary)+'</div><div class="meta">'+msToTc(p.start*1000)+' → '+msToTc(p.end*1000)+' · '+p.duration.toFixed(1)+' 秒</div><button class="btn btn-primary btn-small" onclick="chooseProposal('+i+')">选择这个方案</button></div>').join('');state.smartProposals=proposals}
+async function pollSmartTranscription(jobId){const status=document.getElementById('smartStatus');const iv=setInterval(async()=>{try{const r=await fetch('/api/transcribe/'+jobId+'/progress');const d=await r.json();if(d.status==='loading'||d.status==='running'){status.innerHTML='<span class="spinner"></span> '+(d.message||'识别中…')}else if(d.status==='done'){clearInterval(iv);status.innerHTML='<span class="spinner"></span> 正在梳理内容…';const srt=await (await fetch('/api/transcribe/'+jobId+'/srt')).text();const form=new FormData();form.append('video',state.smartVideo);form.append('srt',srt);const ar=await fetch('/api/smart/analyze',{method:'POST',body:form});const data=await ar.json();if(!ar.ok)throw new Error(data.error||'内容分析失败');state.smartProjectId=data.project_id;renderProposals(data.proposals,data.understanding);status.textContent='已梳理内容并生成 '+data.proposals.length+' 个方案，请选择一个'}else if(d.status==='error'){clearInterval(iv);throw new Error(d.error||'字幕生成失败')}}catch(e){clearInterval(iv);document.getElementById('smartStart').disabled=false;status.textContent='分析失败：'+e.message;toast('❌ '+e.message,'error')}},1000)}
+function renderProposals(proposals,understanding){document.getElementById('proposalStep').style.display='block';const u=understanding||{};document.getElementById('smartUnderstanding').innerHTML='<strong>我们对这段内容的理解</strong><div class="label">主题</div>'+esc(u.topic||'暂时无法判断')+'<div class="label">内容概览</div>'+esc(u.summary||'请结合下方方案判断')+'<div class="label">适合观众</div>'+esc(u.audience||'暂时无法判断');document.getElementById('proposalGrid').innerHTML=proposals.map((p,i)=>'<div class="proposal"><h3>'+esc(p.title)+'</h3><div class="hook">开头建议：'+esc(p.hook)+'</div><div class="summary">'+esc(p.summary)+'</div><div class="meta">'+msToTc(p.start*1000)+' → '+msToTc(p.end*1000)+' · '+p.duration.toFixed(1)+' 秒</div><button class="btn btn-primary btn-small" onclick="chooseProposal('+i+')">选择这个方案</button></div>').join('');state.smartProposals=proposals}
+function rejectSmartProposals(){state.mode='fine';localStorage.setItem('srt_cutter_mode','fine');document.getElementById('smartWorkspace').classList.add('hidden');toast('已进入精细剪辑，请自己检查每个片段','success')}
 async function chooseProposal(index){const proposal=state.smartProposals[index],status=document.getElementById('smartResultStatus');document.getElementById('smartResult').style.display='block';status.innerHTML='<span class="spinner"></span> 正在剪辑 '+esc(proposal.title)+'…';try{const r=await fetch('/api/smart/render',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({project_id:state.smartProjectId,proposal})});const d=await r.json();if(!r.ok)throw new Error(d.error||'渲染失败');state.smartJobId=d.job_id;pollSmartRender(d.job_id)}catch(e){status.textContent='剪辑失败：'+e.message;toast('❌ '+e.message,'error')}}
 async function pollSmartRender(jobId){const status=document.getElementById('smartResultStatus'),iv=setInterval(async()=>{try{const d=await (await fetch('/api/progress/'+jobId)).json();if(d.status==='running')status.innerHTML='<span class="spinner"></span> '+(d.message||'剪辑中…');else if(d.status==='done'){clearInterval(iv);status.textContent='剪辑完成，可以下载';document.getElementById('smartDownload').style.display='inline-flex';toast('✅ 智能剪辑完成','success')}else if(d.status==='error'){clearInterval(iv);status.textContent='剪辑失败：'+(d.error||'');}}catch(e){}},1000)}
 function downloadSmartResult(){if(state.smartJobId)window.open('/api/download/'+state.smartJobId,'_blank')}
@@ -444,11 +453,11 @@ async function checkFFmpeg(){
   const el=document.getElementById('ffmpegStatus');
   try{
     const r=await fetch('/api/check-ffmpeg');const d=await r.json();
-    if(d.available){el.innerHTML='<span class="ok">● FFmpeg 就绪</span>';updateCutButton()}
-    else{el.innerHTML='<span class="fail">● FFmpeg 未安装</span> <button class="btn btn-small btn-outline" onclick="installFFmpeg()">安装</button>'}
-  }catch(e){el.innerHTML='<span class="fail">● 无法检查</span>'}
+    if(d.available){el.innerHTML='<span class="ok">● 视频处理功能就绪</span>';updateCutButton()}
+    else{el.innerHTML='<span class="fail">● 视频处理功能不可用</span> <button class="btn btn-small btn-outline" onclick="installFFmpeg()">安装组件</button>'}
+  }catch(e){el.innerHTML='<span class="fail">● 无法检查视频处理功能</span>'}
 }
-async function installFFmpeg(){const el=document.getElementById('ffmpegStatus');el.innerHTML='<span class="spinner"></span> 安装中…';try{const r=await fetch('/api/install-ffmpeg',{method:'POST'});const d=await r.json();if(d.success){toast('FFmpeg 安装成功！','success');checkFFmpeg()}else{toast('安装失败: '+(d.error||'?'),'error');checkFFmpeg()}}catch(e){toast('安装失败: '+e.message,'error');checkFFmpeg()}}
+async function installFFmpeg(){const el=document.getElementById('ffmpegStatus');el.innerHTML='<span class="spinner"></span> 安装视频处理组件…';try{const r=await fetch('/api/install-ffmpeg',{method:'POST'});const d=await r.json();if(d.success){toast('视频处理功能安装成功！','success');checkFFmpeg()}else{toast('安装失败: '+(d.error||'?'),'error');checkFFmpeg()}}catch(e){toast('安装失败: '+e.message,'error');checkFFmpeg()}}
 
 async function checkTranscription(){const el=document.getElementById('transcribeStatus');try{const r=await fetch('/api/check-transcription');const d=await r.json();if(d.available){el.innerHTML='<span class="ok">● 本地识别就绪</span>';updateTranscribeButton()}else{el.innerHTML='<span class="fail">● 未安装 faster-whisper</span>'}}catch(e){el.innerHTML='<span class="fail">● 无法检查识别组件</span>'}}
 function handleTranscribeMedia(file){if(!file)return;state.transcriptionFile=file;document.getElementById('transcribeFileName').textContent=file.name;document.getElementById('transcribeZone').classList.add('has-file');updateTranscribeButton()}

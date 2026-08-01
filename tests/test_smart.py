@@ -1,4 +1,4 @@
-from podcast_cutter.smart import generate_proposals, parse_srt
+from podcast_cutter.smart import generate_proposals, parse_srt, summarize_content
 
 
 def test_parse_srt_and_generate_proposals():
@@ -24,3 +24,10 @@ def test_parse_srt_and_generate_proposals():
     assert 2 <= len(proposals) <= 3
     assert proposals[0]["end"] > proposals[0]["start"]
     assert proposals[0]["summary"]
+
+
+def test_summarize_content_is_transparent():
+    understanding = summarize_content([{"start": 0, "end": 2, "text": "我们来聊聊内容创作"}])
+    assert understanding["topic"]
+    assert understanding["summary"]
+    assert understanding["audience"]

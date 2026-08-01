@@ -13,7 +13,8 @@ def generate_ai_proposals(segments, api_key, base_url, model):
         "你是中文播客短视频剪辑策划。请从字幕中选择2到3个可以独立传播的连续内容片段。"
         "每段建议30到120秒，优先选择观点完整、有开头吸引力、无需上下文也能理解的片段。"
         "只输出JSON，不要Markdown。格式："
-        '{"proposals":[{"title":"标题","hook":"开头钩子","summary":"摘要",'
+        '{"understanding":{"topic":"主题","summary":"内容概览","audience":"适合观众"},'
+        '"proposals":[{"title":"标题","hook":"开头钩子","summary":"摘要",'
         '"start":0.0,"end":60.0,"reason":"推荐理由","confidence":0.8}]}。\n字幕：\n'
         + transcript
     )
@@ -39,7 +40,14 @@ def generate_ai_proposals(segments, api_key, base_url, model):
     match = re.search(r"\{[\s\S]*\}", content)
     if not match:
         raise ValueError("AI 返回格式无效")
-    raw_proposals = json.loads(match.group(0)).get("proposals", [])
+    parsed = json.loads(match.group(0))
+    raw_understanding = parsed.get("understanding", {})
+    understanding = {
+        "topic": str(raw_understanding.get("topic", "内容主题"))[:100],
+        "summary": str(raw_understanding.get("summary", ""))[:500],
+        "audience": str(raw_understanding.get("audience", "适合关注该主题的观众"))[:160],
+    }
+    raw_proposals = parsed.get("proposals", [])
     max_end = max(segment["end"] for segment in segments)
     proposals = []
     for index, item in enumerate(raw_proposals[:3]):
@@ -63,5 +71,4 @@ def generate_ai_proposals(segments, api_key, base_url, model):
         )
     if len(proposals) < 2:
         raise ValueError("AI 未生成足够的有效方案")
-    return proposals
-
+    return understanding, proposals
