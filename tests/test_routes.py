@@ -8,7 +8,9 @@ def test_health_and_index(tmp_path):
     app = create_app({"TESTING": True, "WORK_DIR": tmp_path / "work", "BIN_DIR": tmp_path / "bin"})
     client = app.test_client()
 
-    assert client.get("/").status_code == 200
+    index = client.get("/")
+    assert index.status_code == 200
+    assert "no-store" in index.headers["Cache-Control"]
     response = client.get("/health")
     assert response.status_code == 200
     assert response.get_json()["status"] == "ok"

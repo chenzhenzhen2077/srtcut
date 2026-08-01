@@ -114,7 +114,11 @@ def _find_tools():
 
 @api.get("/")
 def index():
-    return send_file(current_app.config["INDEX_FILE"])
+    response = send_file(current_app.config["INDEX_FILE"])
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 @api.get("/health")
