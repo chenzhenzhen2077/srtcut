@@ -10,6 +10,7 @@ setup(
     extras_require={
         "dev": ["pytest>=8,<9", "ruff>=0.6,<1"],
         "speech": ["faster-whisper>=1.1,<2"],
+        "prod": ["gunicorn>=23,<24"],
     },
     entry_points={"console_scripts": ["podcast-cutter=podcast_cutter.cli:main"]},
 )

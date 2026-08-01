@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: podcast-cutter
+    env: docker
+    plan: standard
+    healthCheckPath: /health
+    disk:
+      name: podcast-cutter-data
+      mountPath: /data
+      sizeGB: 20
+    envVars:
+      - key: PORT
+        value: 8964
+      - key: PODCAST_CUTTER_WORK_DIR
+        value: /data/work
+      - key: PODCAST_CUTTER_BIN_DIR
+        value: /usr/bin
+      - key: PODCAST_CUTTER_MAX_UPLOAD_MB
+        value: 1024
+      - key: PODCAST_CUTTER_AI_PROVIDER
+        value: api
+      - key: PODCAST_CUTTER_AI_LOCAL_ENABLED
+        value: false
+      - key: PODCAST_CUTTER_AI_API_KEY
+        sync: false
+      - key: PODCAST_CUTTER_AI_BASE_URL
+        value: https://api.openai.com/v1
+      - key: PODCAST_CUTTER_AI_MODEL
+        value: gpt-4.1-mini

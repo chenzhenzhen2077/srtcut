@@ -12,6 +12,7 @@ dependencies = ["Flask>=3.1,<4"]
 [project.optional-dependencies]
 dev = ["pytest>=8,<9", "ruff>=0.6,<1"]
 speech = ["faster-whisper>=1.1,<2"]
+prod = ["gunicorn>=23,<24"]
 
 [project.scripts]
 podcast-cutter = "podcast_cutter.cli:main"

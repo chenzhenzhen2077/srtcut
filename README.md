@@ -79,6 +79,17 @@ pytest
 
 健康检查地址为 `/health`，会同时报告 FFmpeg 和 FFprobe 状态。
 
+## 线上部署
+
+仓库已包含 `Dockerfile`、`Procfile` 和 Render Blueprint 示例 `render.yaml`。推荐使用 Docker 部署，镜像会安装 FFmpeg，并用 Gunicorn 启动 `app:app`。
+
+```bash
+docker build -t podcast-cutter .
+docker run --rm -p 8964:8964 -v podcast-cutter-data:/data podcast-cutter
+```
+
+详细配置见 `DEPLOYMENT.md`。线上环境建议设置 `PODCAST_CUTTER_WORK_DIR=/data/work`，并使用 `PODCAST_CUTTER_AI_PROVIDER=api`、`PODCAST_CUTTER_AI_LOCAL_ENABLED=false` 和服务端环境变量 `PODCAST_CUTTER_AI_API_KEY` 配置在线 AI。
+
 ## 当前边界
 
-这是本地单用户版本。任务队列、自动清理、账号隔离、在线部署和跨平台 FFmpeg 打包将在后续模块中加入。视频文件和自动字幕识别默认只在本机工作目录处理，不上传到第三方服务；AI 分析是否调用第三方模型由用户自行选择。
+这是本地优先的单用户版本。任务队列、自动清理、账号隔离和跨平台 FFmpeg 打包将在后续模块中加入。线上部署已提供基础 Docker/Gunicorn 配置，但仍更适合个人或小流量使用；视频文件和自动字幕识别默认只在服务端工作目录处理，不上传到第三方服务；AI 分析是否调用第三方模型由用户自行选择。

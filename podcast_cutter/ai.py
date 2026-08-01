@@ -13,7 +13,7 @@ def _local_root_url(base_url):
 
 
 def _read_json(url, timeout, api_key=""):
-    headers = {"Accept": "application/json"}
+    headers = {"Accept": "application/json", "User-Agent": "PodcastCutter/0.3"}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     with urlopen(Request(url, headers=headers), timeout=timeout) as response:
@@ -40,9 +40,11 @@ def list_local_models(base_url, timeout=2, api_key=""):
     return []
 
 
-def resolve_ai_backend(config):
+def resolve_ai_backend(config, provider_override=None):
     """Resolve the active semantic model without exposing credentials to the browser."""
-    provider = str(config.get("AI_PROVIDER", "auto")).lower()
+    provider = str(
+        provider_override if provider_override is not None else config.get("AI_PROVIDER", "auto")
+    ).lower()
     api_key = str(config.get("AI_API_KEY", ""))
     api_ready = bool(api_key)
 
@@ -60,6 +62,7 @@ def resolve_ai_backend(config):
             "available": False,
             "provider": "api",
             "model": config.get("AI_MODEL"),
+            "base_url": config.get("AI_BASE_URL"),
             "message": "在线 AI 尚未配置服务密钥",
         }
 
@@ -86,6 +89,7 @@ def resolve_ai_backend(config):
             "available": False,
             "provider": "local",
             "model": config.get("AI_LOCAL_MODEL"),
+            "base_url": config.get("AI_LOCAL_BASE_URL"),
             "message": "本地 AI 已关闭；在线 AI 也尚未配置",
         }
 
@@ -113,6 +117,7 @@ def resolve_ai_backend(config):
             "available": False,
             "provider": "local",
             "model": local_model,
+            "base_url": local_base_url,
             "models": models,
             "message": f"本地服务已运行，但没有找到 {local_model}",
         }
@@ -120,12 +125,46 @@ def resolve_ai_backend(config):
         "available": False,
         "provider": "local",
         "model": local_model,
+        "base_url": local_base_url,
         "models": [],
         "message": "智能内容分析尚未配置，或本地模型服务尚未启动",
     }
 
 
-def generate_ai_proposals(segments, api_key, base_url, model):
+def resolve_ai_channels(config):
+    """Resolve both user-selectable AI channels and the configured default.
+
+    The returned ``active`` value is the full internal backend description. The
+    channel summaries intentionally omit API credentials before they are sent
+    to the browser.
+    """
+    local = resolve_ai_backend(config, "local")
+    api = resolve_ai_backend(config, "api")
+    configured_provider = str(config.get("AI_PROVIDER", "auto")).lower()
+    if configured_provider in {"api", "cloud", "remote"}:
+        active = api
+    elif configured_provider in {"local", "ollama"}:
+        active = local
+    else:
+        active = api if api["available"] else local
+
+    def summary(status):
+        return {
+            "available": bool(status.get("available")),
+            "provider": status.get("provider"),
+            "model": status.get("model"),
+            "base_url": status.get("base_url"),
+            "message": status.get("message", ""),
+            "configured": bool(status.get("available")),
+            "models": status.get("models", []),
+        }
+
+    local_summary = summary(local)
+    local_summary["enabled"] = bool(config.get("AI_LOCAL_ENABLED", True))
+    return {"local": local_summary, "api": summary(api), "active": active}
+
+
+def generate_ai_proposals(segments, api_key, base_url, model, timeout=90, max_tokens=1200):
     transcript = "\n".join(
         f'[{segment["start"]:.2f}-{segment["end"]:.2f}] {segment["text"]}' for segment in segments
     )[:50_000]
@@ -154,10 +193,12 @@ def generate_ai_proposals(segments, api_key, base_url, model):
                 {"role": "system", "content": "你只返回有效JSON。"},
                 {"role": "user", "content": prompt},
             ],
-            "temperature": 0.2,
+            "temperature": 0.1,
+            "max_tokens": max_tokens,
+            "response_format": {"type": "json_object"},
         }
     ).encode("utf-8")
-    headers = {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json", "User-Agent": "PodcastCutter/0.3"}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     request = Request(
@@ -166,7 +207,7 @@ def generate_ai_proposals(segments, api_key, base_url, model):
         headers=headers,
         method="POST",
     )
-    with urlopen(request, timeout=90) as response:
+    with urlopen(request, timeout=timeout) as response:
         data = json.loads(response.read().decode("utf-8"))
     content = data["choices"][0]["message"]["content"]
     match = re.search(r"\{[\s\S]*\}", content)

@@ -3,12 +3,19 @@
 import json
 import logging
 import threading
+import time
 import uuid
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from flask import Blueprint, current_app, jsonify, request, send_file
 
-from .ai import generate_ai_proposals, resolve_ai_backend
+from .ai import (
+    generate_ai_proposals,
+    list_local_models,
+    resolve_ai_backend,
+    resolve_ai_channels,
+)
 from .audio import analyze_audio_segments, run_audio_export
 from .media import (
     binary_version,
@@ -112,6 +119,14 @@ def _find_tools():
     return find_binary("ffmpeg", bin_dir), find_binary("ffprobe", bin_dir)
 
 
+def _transcription_progress_is_stale(progress_path):
+    try:
+        stale_after = max(1, int(current_app.config["TRANSCRIPTION_STALE_SECONDS"]))
+        return time.time() - Path(progress_path).stat().st_mtime > stale_after
+    except (OSError, TypeError, ValueError):
+        return True
+
+
 @api.get("/")
 def index():
     response = send_file(current_app.config["INDEX_FILE"])
@@ -162,13 +177,10 @@ def check_transcription():
 
 @api.get("/api/check-ai")
 def check_ai():
-    active = resolve_ai_backend(current_app.config)
-    if active.get("provider") == "local":
-        local = active
-    else:
-        local_config = dict(current_app.config)
-        local_config["AI_PROVIDER"] = "local"
-        local = resolve_ai_backend(local_config)
+    channels = resolve_ai_channels(current_app.config)
+    active = channels["active"]
+    local = channels["local"]
+    api_channel = channels["api"]
     return jsonify(
         {
             "available": active["available"],
@@ -177,20 +189,99 @@ def check_ai():
             "message": active["message"],
             "selection": current_app.config["AI_PROVIDER"],
             "local": {
+                "enabled": local.get("enabled", True),
                 "available": local["available"],
                 "model": local.get("model"),
                 "models": local.get("models", []),
                 "message": local["message"],
             },
             "api": {
-                "configured": bool(current_app.config["AI_API_KEY"]),
-                "model": current_app.config["AI_MODEL"],
-                "message": (
-                    f"在线 AI 已配置：{current_app.config['AI_MODEL']}"
-                    if current_app.config["AI_API_KEY"]
-                    else "在线 AI 尚未配置服务密钥"
-                ),
+                "configured": api_channel["configured"],
+                "available": api_channel["available"],
+                "model": api_channel.get("model"),
+                "base_url": api_channel.get("base_url"),
+                "message": api_channel["message"],
             },
+        }
+    )
+
+
+def _public_ai_channels(channels):
+    return {"local": channels["local"], "api": channels["api"]}
+
+
+@api.post("/api/ai/config")
+def configure_ai():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "AI 设置参数无效"}), 400
+    provider = str(payload.get("provider", "")).lower()
+
+    if provider == "local":
+        model = str(payload.get("model", "")).strip()
+        if not model or len(model) > 120:
+            return jsonify({"error": "请选择本机模型"}), 400
+        base_url = str(current_app.config["AI_LOCAL_BASE_URL"])
+        api_key = str(current_app.config["AI_LOCAL_API_KEY"])
+        models = list_local_models(base_url, timeout=5, api_key=api_key)
+        normalized = {name.removesuffix(":latest") for name in models}
+        if model not in models and model.removesuffix(":latest") not in normalized:
+            return jsonify({"error": "没有找到这个本机模型", "models": models}), 400
+        current_app.config["AI_LOCAL_MODEL"] = model
+        channels = resolve_ai_channels(current_app.config)
+        return jsonify(
+            {
+                "success": True,
+                "provider": "local",
+                "message": f"已选择本机模型：{model}",
+                "ai_channels": _public_ai_channels(channels),
+            }
+        )
+
+    if provider != "api":
+        return jsonify({"error": "请选择本机模型或在线 AI"}), 400
+    if payload.get("clear") is True:
+        current_app.config["AI_API_KEY"] = ""
+        channels = resolve_ai_channels(current_app.config)
+        return jsonify(
+            {
+                "success": True,
+                "provider": "api",
+                "message": "在线 AI 设置已清除",
+                "ai_channels": _public_ai_channels(channels),
+            }
+        )
+
+    base_url = str(payload.get("base_url", "")).strip().rstrip("/")
+    model = str(payload.get("model", "")).strip()
+    supplied_key = str(payload.get("api_key", "")).strip()
+    api_key = supplied_key or str(current_app.config.get("AI_API_KEY", ""))
+    parsed = urlsplit(base_url)
+    is_loopback = parsed.hostname in {"127.0.0.1", "localhost", "::1"}
+    if not parsed.netloc or parsed.scheme not in {"http", "https"}:
+        return jsonify({"error": "服务地址无效，请填写完整地址"}), 400
+    if parsed.scheme != "https" and not is_loopback:
+        return jsonify({"error": "在线服务地址必须使用 HTTPS"}), 400
+    if not model or len(model) > 120:
+        return jsonify({"error": "请填写在线模型名称"}), 400
+    if not api_key:
+        return jsonify({"error": "请填写在线服务密钥"}), 400
+
+    models = list_local_models(base_url, timeout=10, api_key=api_key)
+    if not models:
+        return jsonify({"error": "无法连接在线 AI，请检查服务地址和密钥"}), 502
+    if model not in models:
+        return jsonify({"error": f"在线服务中没有找到模型 {model}", "models": models[:100]}), 400
+
+    current_app.config.update(AI_API_KEY=api_key, AI_BASE_URL=base_url, AI_MODEL=model)
+    channels = resolve_ai_channels(current_app.config)
+    channels["api"]["models"] = models
+    return jsonify(
+        {
+            "success": True,
+            "provider": "api",
+            "message": f"在线 AI 已连接：{model}",
+            "ai_channels": _public_ai_channels(channels),
         }
     )
 
@@ -284,7 +375,11 @@ def get_transcription_progress(job_id):
             progress = json.loads(progress_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             return jsonify({"status": "running", "progress": 0})
-        if progress.get("status") in {"queued", "loading", "running"} and not transcription_job_active(job_id):
+        if (
+            progress.get("status") in {"queued", "loading", "running"}
+            and not transcription_job_active(job_id)
+            and _transcription_progress_is_stale(progress_path)
+        ):
             return jsonify(
                 {
                     "status": "error",
@@ -380,7 +475,8 @@ def prepare_media_project(project_id):
         segments,
         suggestions,
     )
-    ai_status = resolve_ai_backend(current_app.config)
+    channels = resolve_ai_channels(current_app.config)
+    ai_status = channels["active"]
     return jsonify(
         {
             "project_id": project_id,
@@ -392,6 +488,7 @@ def prepare_media_project(project_id):
             "ai_provider": ai_status.get("provider"),
             "ai_model": ai_status.get("model"),
             "ai_message": ai_status["message"],
+            "ai_channels": _public_ai_channels(channels),
         }
     )
 
@@ -606,22 +703,30 @@ def podcast_download(output_name, project_id):
 
 @api.post("/api/smart/analyze")
 def smart_analyze():
-    ai_status = resolve_ai_backend(current_app.config)
-    if not ai_status["available"]:
-        return (
-            jsonify(
-                {
-                    "error": ai_status["message"] + "；你仍可使用精简剪辑",
-                    "code": "ai_unavailable",
-                }
-            ),
-            503,
-        )
+    payload = request.get_json(silent=True)
+    if payload is None:
+        ai_status = resolve_ai_backend(current_app.config)
+        if not ai_status["available"]:
+            return (
+                jsonify(
+                    {
+                        "error": ai_status["message"] + "；你仍可使用精简剪辑",
+                        "code": "ai_unavailable",
+                        "provider": ai_status.get("provider"),
+                    }
+                ),
+                503,
+            )
+        return jsonify({"error": "智能分析项目参数无效"}), 400
     try:
-        payload = request.get_json(force=True)
         project_id = payload["project_id"]
+        requested_provider = payload.get("provider")
     except (TypeError, KeyError, ValueError, json.JSONDecodeError):
         return jsonify({"error": "智能分析项目参数无效"}), 400
+    if requested_provider is not None:
+        requested_provider = str(requested_provider).lower()
+        if requested_provider not in {"auto", "local", "ollama", "api", "cloud", "remote"}:
+            return jsonify({"error": "AI 通道参数无效，请选择本机模型或在线 AI"}), 400
     if not _is_valid_job_id(project_id):
         return jsonify({"error": "项目 ID 无效"}), 400
     decision = load_edit_decision(current_app.config["WORK_DIR"], project_id)
@@ -630,12 +735,30 @@ def smart_analyze():
     segments = decision.get("segments", [])
     if len(segments) < 2:
         return jsonify({"error": "字幕内容太少，无法生成智能方案"}), 400
+    ai_status = (
+        resolve_ai_backend(current_app.config)
+        if requested_provider is None
+        else resolve_ai_backend(current_app.config, requested_provider)
+    )
+    if not ai_status["available"]:
+        return (
+            jsonify(
+                {
+                    "error": ai_status["message"] + "；你仍可使用精简剪辑",
+                    "code": "ai_unavailable",
+                    "provider": ai_status.get("provider"),
+                }
+            ),
+            503,
+        )
     try:
         understanding, proposals = generate_ai_proposals(
             segments,
             ai_status.get("api_key", ""),
             ai_status["base_url"],
             ai_status["model"],
+            current_app.config["AI_REQUEST_TIMEOUT"],
+            current_app.config["AI_MAX_TOKENS"],
         )
     except Exception:
         logger.exception("Semantic proposal generation failed")

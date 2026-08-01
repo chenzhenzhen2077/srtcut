@@ -52,9 +52,20 @@ html,body{height:100%;background:var(--bg);color:var(--text);font:14px/1.6 var(-
 .proposal h3{font-size:14px;margin-bottom:6px}.proposal .hook{color:var(--accent);font-size:12px;margin-bottom:8px}.proposal .summary{font-size:11px;line-height:1.6;color:var(--text2);flex:1}.proposal .meta{font:10px var(--mono);color:var(--text3);margin:10px 0}.proposal .btn{width:100%}
 .smart-understanding{background:var(--bg2);border-left:3px solid var(--accent);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;font-size:12px;line-height:1.7}.smart-understanding strong{color:var(--accent)}
 .smart-understanding .label{font-size:10px;color:var(--text3);margin-top:6px}
+.proposal-review-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:12px}
+.proposal-review-head h3{font-size:16px;margin-bottom:4px}.proposal-review-summary{font-size:11px;color:var(--text2);line-height:1.6}
+.proposal-review-meta{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}.proposal-review-meta span{background:var(--bg2);border:1px solid var(--bg4);border-radius:var(--radius-sm);padding:4px 7px;font-size:10px;color:var(--text2);white-space:nowrap}
+.proposal-transcript{max-height:430px;overflow-y:auto;border-top:1px solid var(--bg4);border-bottom:1px solid var(--bg4)}
+.proposal-transcript-row{display:grid;grid-template-columns:112px minmax(0,1fr) auto;gap:10px;align-items:start;padding:9px 4px;border-bottom:1px solid var(--bg4)}.proposal-transcript-row:last-child{border-bottom:none}
+.proposal-transcript-row .time{font:10px var(--mono);color:var(--text3);padding-top:2px}.proposal-transcript-row .text{font-size:12px;line-height:1.65}.proposal-transcript-row .review-state{font-size:10px;color:var(--ok);white-space:nowrap}.proposal-transcript-row.has-cut{background:var(--warn-bg)}.proposal-transcript-row.has-cut .review-state{color:var(--warn)}
+.proposal-transcript-empty{padding:22px;text-align:center;color:var(--text2);font-size:12px}
 .fine-guide{background:var(--bg2);border:1px solid var(--bg4);border-radius:var(--radius-sm);padding:10px 11px;font-size:11px;color:var(--text2);line-height:1.7}.fine-guide strong{color:var(--text)}
+.jianying-subtitle-tip{background:color-mix(in srgb,var(--accent) 8%,var(--bg2));border:1px solid color-mix(in srgb,var(--accent) 45%,var(--bg4));border-radius:var(--radius-sm);padding:10px 11px;font-size:10px;color:var(--text2);line-height:1.6}.jianying-subtitle-tip strong{display:block;color:var(--accent);font-size:11px;margin-bottom:3px}.jianying-subtitle-tip .btn{margin-top:7px}.jianying-subtitle-tip small{display:block;color:var(--text3);font-size:9px;line-height:1.5;margin-top:6px}
+.cut-behavior-note{background:var(--warn-bg);border-bottom:1px solid var(--bg4);padding:9px 14px;font-size:11px;color:var(--text2);line-height:1.6}.cut-behavior-note strong{color:var(--warn)}
+.fine-sync-audio{display:flex;align-items:flex-start;gap:7px;margin-top:9px;padding:8px;background:var(--bg2);border:1px solid var(--bg4);border-radius:var(--radius-sm);font-size:11px;cursor:pointer}.fine-sync-audio input{margin-top:3px;accent-color:var(--accent)}.fine-sync-audio strong{display:block}.fine-sync-audio span{display:block;color:var(--text2);font-size:10px;line-height:1.5;margin-top:2px}
 .setting-help{font-size:10px;color:var(--text3);line-height:1.5;margin-top:4px}
 @media(max-width:700px){.proposal-grid,.output-choices{grid-template-columns:1fr}.smart-workspace,.audio-workspace{padding:22px 14px}}
+@media(max-width:600px){.proposal-review-head{display:block}.proposal-review-meta{justify-content:flex-start;margin-top:9px}.proposal-transcript-row{grid-template-columns:1fr}.proposal-transcript-row .review-state{white-space:normal}}
 @media(max-width:600px){.mode-cards{grid-template-columns:1fr}.mode-chooser-title{font-size:23px}}
 .header{height:var(--header-h);display:flex;align-items:center;gap:12px;padding:0 20px;background:var(--bg2);border-bottom:1px solid var(--bg4);flex-shrink:0}
 .header h1{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
@@ -188,13 +199,29 @@ input[type=file]{display:none}
 .processing-banner .info{font-size:11px;color:var(--text2)}
 .processing-banner .info strong{color:var(--text)}
 .fine-source-status{font-size:11px;color:var(--text2);background:var(--bg3);border:1px solid var(--bg4);border-radius:var(--radius-sm);padding:9px 10px;line-height:1.5}
-.ai-channel-note{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:9px 0;font-size:10px}
-.ai-channel-note>div{padding:8px 9px;background:var(--bg3);border:1px solid var(--bg4);border-radius:var(--radius-sm)}
-.ai-channel-note strong{display:block;color:var(--text);margin-bottom:3px}
-.ai-channel-note span{color:var(--text2);line-height:1.4}
+.ai-channel-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:9px 0;font-size:10px}
+.ai-channel-option{width:100%;padding:9px;text-align:left;background:var(--bg3);color:var(--text);border:1px solid var(--bg4);border-radius:var(--radius-sm);font:inherit;cursor:pointer;transition:border-color .12s,background .12s}
+.ai-channel-option:hover{border-color:var(--accent);background:var(--bg2)}
+.ai-channel-option.selected{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--bg3))}
+.ai-channel-option.unavailable{border-style:dashed}
+.ai-channel-option strong{display:block;color:var(--text);margin-bottom:3px}
+.ai-channel-option span{display:block;color:var(--text2);line-height:1.4}
+.ai-channel-option .channel-state{display:block;margin-top:5px;color:var(--accent);font-size:9px}
+.ai-channel-option.unavailable .channel-state{color:var(--warn)}
+.ai-config-panel{padding-top:12px;margin-top:6px;border-top:1px solid var(--bg4)}
+.ai-config-row{display:grid;grid-template-columns:110px minmax(0,1fr);gap:9px;align-items:center}
+.ai-config-row label,.ai-config-field span{font-size:10px;color:var(--text2)}
+.ai-config-row select,.ai-config-field input,.ai-config-field select{width:100%;min-width:0;background:var(--bg2);color:var(--text);border:1px solid var(--bg4);border-radius:var(--radius-sm);padding:7px 8px;font:11px var(--font)}
+.ai-config-row select:focus,.ai-config-field input:focus,.ai-config-field select:focus{outline:none;border-color:var(--accent)}
+.ai-config-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.ai-config-field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ai-config-field.key-field{grid-column:1/-1}
+.ai-config-help{font-size:10px;color:var(--text3);line-height:1.5;margin-top:7px}
+.ai-config-status{font-size:10px;color:var(--text2);min-height:17px;margin-top:7px}
+.ai-config-status.ok{color:var(--ok)}.ai-config-status.fail{color:var(--danger)}
 @media(max-width:960px){.sidebar{width:220px;min-width:220px}}
-@media(max-width:720px){.cut-panel{width:220px;min-width:220px}}
-@media(max-width:540px){.sidebar,.cut-panel{display:none}.header h1 small{display:none}.ai-channel-note{grid-template-columns:1fr}}
+@media(max-width:720px){.cut-panel{display:none}}
+@media(max-width:540px){.sidebar,.cut-panel{display:none}.header h1 small{display:none}.ai-channel-options,.ai-config-grid{grid-template-columns:1fr}.ai-config-row{grid-template-columns:1fr}.ai-config-field.key-field{grid-column:auto}}
 </style>
 </head>
 <body>
@@ -238,9 +265,35 @@ input[type=file]{display:none}
       <div class="smart-status" id="smartStatus">准备开始</div>
       <div class="smart-actions"><button class="btn btn-primary" id="mediaSubtitleStart" onclick="startUnifiedTranscription()" disabled>生成字幕</button></div>
     </div>
-    <div class="smart-step" id="videoChoiceStep" style="display:none"><h2>2. 选择分析方式</h2><div class="podcast-flow"><strong>字幕已经生成：</strong>智能剪辑会先理解完整内容，再给出 2-3 个方案；精简剪辑使用本地检测和完整字幕时间轴，由你逐句决定。</div><div class="ai-channel-note"><div><strong>本机模型</strong><span>内容留在这台电脑上，不需要 API Key。</span></div><div><strong>在线 AI</strong><span>通过已配置的服务分析，可能产生调用费用。</span></div></div><div class="smart-status" id="aiAvailability"></div><div class="smart-actions"><button class="btn btn-primary" id="smartAnalyzeButton" onclick="startSmartAnalysis()">✨ 智能剪辑</button><button class="btn btn-outline" onclick="enterFineFromPreparedMedia()">🎛 精简剪辑</button></div></div>
+    <div class="smart-step" id="videoChoiceStep" style="display:none">
+      <h2>2. 选择分析方式</h2>
+      <div class="podcast-flow"><strong>字幕已经生成：</strong>智能剪辑会先理解完整内容，再给出 2-3 个方案；精简剪辑使用本地检测和完整字幕时间轴，由你逐句决定。</div>
+      <div class="ai-channel-options" id="aiChannelOptions">
+        <button type="button" class="ai-channel-option" id="aiLocalOption" onclick="chooseAiProvider('local')" aria-pressed="false"><strong>本机模型</strong><span id="aiLocalDescription">内容留在这台电脑上</span><small class="channel-state" id="aiLocalState">等待检测</small></button>
+        <button type="button" class="ai-channel-option" id="aiApiOption" onclick="chooseAiProvider('api')" aria-pressed="false"><strong>在线 AI</strong><span id="aiApiDescription">使用在线服务分析内容</span><small class="channel-state" id="aiApiState">等待检测</small></button>
+      </div>
+      <div class="ai-config-panel" id="aiLocalConfig">
+        <div class="ai-config-row"><label for="aiLocalModelSelect">选择本机模型</label><select id="aiLocalModelSelect" onchange="saveLocalAiModel()"></select></div>
+        <div class="ai-config-help" id="aiLocalModelHelp">小模型更快，大模型理解更细，但等待时间更长。</div>
+        <div class="ai-config-status" id="aiLocalConfigStatus"></div>
+      </div>
+      <div class="ai-config-panel" id="aiApiSmartConfig" style="display:none">
+        <div class="ai-config-grid">
+          <label class="ai-config-field"><span>在线服务</span><select id="smartAiPreset" onchange="updateSmartAiPreset()"><option value="openai-next">OpenAI Next</option><option value="openai">OpenAI</option><option value="deepseek">DeepSeek</option><option value="qwen">通义千问</option><option value="custom">自定义</option></select></label>
+          <label class="ai-config-field"><span>模型</span><input id="smartAiModel" list="smartAiModelList" placeholder="例如 gpt-4.1-mini"><datalist id="smartAiModelList"></datalist></label>
+          <label class="ai-config-field"><span>服务地址</span><input id="smartAiBaseUrl" type="url" placeholder="https://.../v1"></label>
+          <label class="ai-config-field key-field"><span>服务密钥</span><input id="smartAiApiKey" type="password" autocomplete="off" placeholder="粘贴服务密钥"></label>
+        </div>
+        <div class="ai-config-help">密钥只保留在当前本机服务的内存中，不会显示回来；服务重启后需要重新填写。</div>
+        <div class="smart-actions"><button class="btn btn-primary btn-small" id="saveSmartAiConfigButton" onclick="saveSmartAiConfig()">保存并检测</button><button class="btn btn-outline btn-small" id="clearSmartAiConfigButton" onclick="clearSmartAiConfig()">清除设置</button></div>
+        <div class="ai-config-status" id="smartAiConfigStatus"></div>
+      </div>
+      <div class="smart-status" id="aiAvailability"></div>
+      <div class="smart-actions"><button class="btn btn-primary" id="smartAnalyzeButton" onclick="startSmartAnalysis()">✨ 智能剪辑</button><button class="btn btn-outline" onclick="enterFineFromPreparedMedia()">🎛 精简剪辑</button></div>
+    </div>
     <div class="smart-step" id="proposalStep" style="display:none"><h2>3. 先了解内容，再选择方案</h2><div class="smart-understanding" id="smartUnderstanding"></div><div class="proposal-grid" id="proposalGrid"></div><div class="smart-actions"><button class="btn btn-outline" onclick="rejectSmartProposals()">这些方案都不合适，进入精简剪辑</button></div></div>
-    <div class="smart-step" id="smartResult" style="display:none"><h2>4. 导出结果</h2><div class="smart-status" id="smartResultStatus"></div><div class="podcast-result-actions"><button class="btn btn-success" id="smartAudioDownload" style="display:none" onclick="downloadSmartResult('audio')">⬇ 下载音频</button><button class="btn btn-success" id="smartVideoDownload" style="display:none" onclick="downloadSmartResult('video')">⬇ 下载视频</button></div></div>
+    <div class="smart-step" id="proposalReviewStep" style="display:none"><h2>4. 核对方案字幕</h2><div class="proposal-review-head"><div><h3 id="proposalReviewTitle"></h3><div class="proposal-review-summary" id="proposalReviewSummary"></div></div><div class="proposal-review-meta" id="proposalReviewMeta"></div></div><div class="proposal-transcript" id="proposalReviewTranscript"></div><div class="smart-actions"><button class="btn btn-outline" onclick="backToSmartProposals()">返回重新选方案</button><button class="btn btn-success" id="confirmSmartProposalButton" onclick="confirmSmartProposal()">确认字幕，开始生成</button></div></div>
+    <div class="smart-step" id="smartResult" style="display:none"><h2>5. 导出结果</h2><div class="smart-status" id="smartResultStatus"></div><div class="podcast-result-actions"><button class="btn btn-success" id="smartAudioDownload" style="display:none" onclick="downloadSmartResult('audio')">⬇ 下载音频</button><button class="btn btn-success" id="smartVideoDownload" style="display:none" onclick="downloadSmartResult('video')">⬇ 下载视频</button></div></div>
   </div>
 </div>
 <div class="app">
@@ -248,7 +301,7 @@ input[type=file]{display:none}
     <h1>✂ SRT Cutter <small>播客剪辑辅助工具</small></h1>
     <span class="badge">v2.1</span>
     <div class="header-actions">
-      <button class="btn btn-outline btn-small" onclick="showModeChooser()">切换模式</button>
+      <button class="btn btn-outline btn-small" onclick="returnFromFine()" id="fineBackButton">← 返回上一页</button>
       <button class="btn btn-outline btn-small theme-toggle" onclick="toggleTheme()" title="切换日间/夜间主题" id="themeToggle">☀</button>
       <button class="btn btn-outline btn-small" onclick="showQuickTour()">使用说明</button>
       <button class="btn btn-outline btn-small" onclick="openExportModal()">📋 导出剪辑单</button>
@@ -257,12 +310,13 @@ input[type=file]{display:none}
   <div class="body">
     <aside class="sidebar">
       <div class="sidebar-scroll">
-        <div class="fine-guide"><strong>精简剪辑流程</strong><br>① 字幕已在上一步生成，也可以导入 SRT<br>② 点击“一键扫描”找出口癖、重复词和长停顿<br>③ 点击字幕段落可手动标记或取消<br>④ 导出剪辑后的音频或视频</div>
+        <div class="fine-guide"><strong>精简剪辑流程</strong><br>① 使用当前字幕，也可以用剪映 SRT 替换<br>② 点击“一键扫描”找出口癖、重复词和长停顿<br>③ 点击字幕段落可手动标记或取消<br>④ 导出剪辑后的音频或视频</div>
+        <div class="jianying-subtitle-tip"><strong>想要更准确的字幕？</strong>可以先用剪映识别同一个原视频并导出 SRT，再回到这里替换当前字幕。剪辑仍会使用已经上传的原视频，不需要重复上传。<button class="btn btn-outline btn-full btn-small" onclick="document.getElementById('fileInput').click()">导入剪映 SRT 字幕</button><small>请使用同一个原视频，并且不要先在剪映里裁剪、变速或改变开头，否则字幕时间会与素材错位。</small></div>
         <div class="card">
-          <div class="card-title">导入字幕 (SRT)</div>
+          <div class="card-title">替换 / 导入字幕 (SRT)</div>
           <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
             <div class="icon">📄</div>
-            <p class="hint">拖拽或点击选择 SRT</p>
+            <p class="hint">拖拽或点击选择 SRT，可使用剪映导出的字幕</p>
             <p class="filename" id="fileName"></p>
           </div>
           <input type="file" id="fileInput" accept=".srt,.txt" onchange="handleFile(this.files[0])">
@@ -290,6 +344,7 @@ input[type=file]{display:none}
           <div class="fine-source-status" id="fineSourceStatus">素材会从上一步自动带入，无需重复上传。</div>
           <div class="card-row" id="fineQualityRow" style="margin-top:6px"><label>输出质量</label><select id="qualitySelect"><option value="high">高清：文件较大</option><option value="medium" selected>平衡：推荐</option><option value="fast">快速：文件较小</option></select></div>
           <div class="setting-help" id="fineQualityHelp">高清更清楚但处理更慢；快速处理更快，适合先看剪辑效果。</div>
+          <label class="fine-sync-audio" id="fineSyncAudioRow"><input type="checkbox" id="fineSyncAudio" checked onchange="updateFineExportButton()"><span><strong>同步生成音频 MP3</strong><span>音频会使用和视频完全相同的删除时间点，适合先试听或发布音频播客。</span></span></label>
           <div class="ffmpeg-status" id="ffmpegStatus"><span>视频处理功能检查中…</span></div>
           <button class="btn btn-success btn-full btn-small" onclick="startAutoCut()" id="btnCut">✂ 自动剪切去口癖</button>
         </div>
@@ -304,8 +359,8 @@ input[type=file]{display:none}
           <span class="stat">静默 <strong id="stGaps">0</strong></span>
           <span class="stat danger">标记 ✕ <strong id="stCut">0</strong></span>
         </div>
-        <div style="margin-left:auto"><button class="btn btn-outline btn-small" onclick="scrollToFirstCut()" disabled id="btnScrollCut">↓ 第一刀</button></div>
       </div>
+      <div class="cut-behavior-note"><strong>删除规则：</strong>点击或扫描标记后，会删除这一整条字幕对应的音频／视频时间段；黄色高亮只是在提示口癖位置，不会只删除高亮的词。</div>
       <div class="timeline-viewport" id="timelineViewport">
         <div class="empty-state" id="emptyState">
           <div class="icon">🎙</div>
@@ -319,6 +374,8 @@ input[type=file]{display:none}
         <div class="info" id="procInfo"><strong>正在剪辑…</strong></div>
         <div class="progress-bar-wrap" style="flex:1;max-width:300px"><div class="progress-bar-fill" id="procBar"></div></div>
         <button class="btn btn-outline btn-small" onclick="downloadResult()" id="btnDownload" style="display:none">⬇ 下载</button>
+        <button class="btn btn-outline btn-small" onclick="downloadFineOutput('video')" id="btnDownloadFineVideo" style="display:none">⬇ 下载视频</button>
+        <button class="btn btn-outline btn-small" onclick="downloadFineOutput('audio')" id="btnDownloadFineAudio" style="display:none">⬇ 下载音频</button>
       </div>
     </main>
     <aside class="cut-panel">
@@ -388,11 +445,17 @@ const AI_PROVIDERS = {
   deepseek:{ baseUrl:'https://api.deepseek.com/v1', models:['deepseek-chat','deepseek-reasoner'] },
   qwen:   { baseUrl:'https://dashscope.aliyuncs.com/compatible-mode/v1', models:['qwen-plus','qwen-max','qwen-turbo'] },
 };
+const SMART_AI_PRESETS = {
+  'openai-next':{baseUrl:'https://api.openai-next.com/v1',model:'gpt-4.1-mini'},
+  openai:{baseUrl:'https://api.openai.com/v1',model:'gpt-4.1-mini'},
+  deepseek:{baseUrl:'https://api.deepseek.com/v1',model:'deepseek-chat'},
+  qwen:{baseUrl:'https://dashscope.aliyuncs.com/compatible-mode/v1',model:'qwen-plus'},
+};
 
 const state = {
   segments: [], cutSet: new Set(),
   fillerWords: ['嗯','啊','呃','就是','然后','那个','这个','对吧','是吧','其实','所以说','然后呢','就是说','基本上','完了','然后就是说','然后就是','um','uh','er','like','you know','actually','basically','sort of','kind of','i mean','right','so'],
-  activeFillers: new Set(), videoFile: null, transcriptionFile: null, transcriptionJobId: null, jobId: null, _aiCuts: null, mode: null, theme: localStorage.getItem('srt_cutter_theme') || 'light', smartVideo: null, smartDuration: null, audioFile: null, audioJobId: null, audioProjectId: null, audioCuts: [], audioSourceKind: null, confirmedAudioCuts: [], podcastDownloads: {}, activeProjectId: null, activeSourceKind: null, activeTranscript: '', activeSegments: [], aiAvailable: false, aiProvider: null, aiModel: null, aiMessage: '', fineProjectId: null, fineSourceKind: null, fineDownloadUrl: null,
+  activeFillers: new Set(), videoFile: null, transcriptionFile: null, transcriptionJobId: null, jobId: null, _aiCuts: null, mode: null, theme: localStorage.getItem('srt_cutter_theme') || 'light', smartVideo: null, smartDuration: null, audioFile: null, audioJobId: null, audioProjectId: null, audioCuts: [], audioSourceKind: null, confirmedAudioCuts: [], podcastDownloads: {}, activeProjectId: null, activeSourceKind: null, activeTranscript: '', activeSegments: [], aiAvailable: false, aiProvider: null, aiModel: null, aiMessage: '', aiChannels: {local: null, api: null}, aiProviderPreference: null, selectedSmartProposalIndex: null, fineProjectId: null, fineSourceKind: null, fineDownloadUrl: null, fineDownloadUrls: {},
 };
 
 function init(){
@@ -430,7 +493,8 @@ function applyTheme(){document.body.classList.toggle('light',state.theme==='ligh
 function toggleTheme(){state.theme=state.theme==='light'?'dark':'light';localStorage.setItem('srt_cutter_theme',state.theme);applyTheme()}
 function selectMode(mode){state.mode=mode;configureMediaWorkspace(mode);document.getElementById('modeChooser').classList.add('hidden');document.getElementById('smartWorkspace').classList.remove('hidden');document.getElementById('audioWorkspace').classList.add('hidden');toast(mode==='video'?'🎬 已进入视频播客剪辑':'🎧 已进入纯音频播客剪辑','success')}
 function showModeChooser(){document.getElementById('modeChooser').classList.remove('hidden');document.getElementById('smartWorkspace').classList.add('hidden');document.getElementById('audioWorkspace').classList.add('hidden')}
-function configureMediaWorkspace(mode){const isAudio=mode==='audio';state.smartVideo=null;state.smartDuration=null;state.activeProjectId=null;state.activeSourceKind=mode;state.activeTranscript='';state.activeSegments=[];state.aiAvailable=false;state.aiProvider=null;state.aiModel=null;state.aiMessage='';document.getElementById('mediaWorkspaceTitle').textContent=isAudio?'🎧 纯音频播客剪辑':'🎬 视频播客同步剪辑';document.getElementById('mediaWorkspaceSubtitle').textContent='上传素材并生成字幕，再选择智能剪辑或精简剪辑';document.getElementById('mediaUploadTitle').textContent=isAudio?'1. 上传音频素材':'1. 上传播客视频';document.getElementById('mediaUploadIcon').textContent=isAudio?'🎙':'🎬';document.getElementById('mediaUploadHint').textContent=isAudio?'点击或拖拽上传 MP3、WAV、M4A':'点击或拖拽上传视频';document.getElementById('mediaGuidance').innerHTML=isAudio?'<strong>上传建议：</strong>推荐单个音频不超过 2 小时。较长节目建议按章节分段处理，检查剪辑结果会更方便。':'<strong>上传建议：</strong>推荐单个视频不超过 500MB、10 分钟。超过 1GB 建议先切成 5-10 分钟片段处理。';document.getElementById('smartInput').accept=isAudio?'audio/*,.m4a,.flac,.ogg':'video/*';document.getElementById('smartInput').value='';document.getElementById('smartUpload').classList.remove('has-file');document.getElementById('smartFileName').textContent='';document.getElementById('smartFileMeta').style.display='none';document.getElementById('smartStatus').textContent='准备开始';document.getElementById('mediaSubtitleStart').disabled=true;document.getElementById('mediaSubtitleStart').textContent='生成字幕';document.getElementById('videoChoiceStep').style.display='none';document.getElementById('proposalStep').style.display='none';document.getElementById('smartResult').style.display='none'}
+function returnFromFine(){if(state.activeProjectId&&state.activeTranscript){state.mode=state.activeSourceKind;document.getElementById('modeChooser').classList.add('hidden');document.getElementById('smartWorkspace').classList.remove('hidden');toast('已返回分析方式页面','success');return}showModeChooser()}
+function configureMediaWorkspace(mode){const isAudio=mode==='audio';state.smartVideo=null;state.smartDuration=null;state.activeProjectId=null;state.activeSourceKind=mode;state.activeTranscript='';state.activeSegments=[];state.aiAvailable=false;state.aiProvider=null;state.aiModel=null;state.aiMessage='';state.aiChannels={local:null,api:null};state.aiProviderPreference=null;state.selectedSmartProposalIndex=null;renderAiChannels();document.getElementById('mediaWorkspaceTitle').textContent=isAudio?'🎧 纯音频播客剪辑':'🎬 视频播客同步剪辑';document.getElementById('mediaWorkspaceSubtitle').textContent='上传素材并生成字幕，再选择智能剪辑或精简剪辑';document.getElementById('mediaUploadTitle').textContent=isAudio?'1. 上传音频素材':'1. 上传播客视频';document.getElementById('mediaUploadIcon').textContent=isAudio?'🎙':'🎬';document.getElementById('mediaUploadHint').textContent=isAudio?'点击或拖拽上传 MP3、WAV、M4A':'点击或拖拽上传视频';document.getElementById('mediaGuidance').innerHTML=isAudio?'<strong>上传建议：</strong>推荐单个音频不超过 2 小时。较长节目建议按章节分段处理，检查剪辑结果会更方便。':'<strong>上传建议：</strong>推荐单个视频不超过 500MB、10 分钟。超过 1GB 建议先切成 5-10 分钟片段处理。';document.getElementById('smartInput').accept=isAudio?'audio/*,.m4a,.flac,.ogg':'video/*';document.getElementById('smartInput').value='';document.getElementById('smartUpload').classList.remove('has-file');document.getElementById('smartFileName').textContent='';document.getElementById('smartFileMeta').style.display='none';document.getElementById('smartStatus').textContent='准备开始';document.getElementById('mediaSubtitleStart').disabled=true;document.getElementById('mediaSubtitleStart').textContent='生成字幕';document.getElementById('videoChoiceStep').style.display='none';document.getElementById('proposalStep').style.display='none';document.getElementById('proposalReviewStep').style.display='none';document.getElementById('smartResult').style.display='none'}
 function handleAudioFile(file){if(!file)return;const ext=file.name.split('.').pop().toLowerCase();const videoExt=['mp4','mov','mkv','avi','webm'];if(file.type.startsWith('video/')||videoExt.includes(ext)){toast('这是视频文件，请从首页进入“视频播客同步剪辑”','error');return}state.audioFile=file;state.audioSourceKind='audio';state.audioProjectId=null;state.audioCuts=[];state.confirmedAudioCuts=[];state.podcastDownloads={};document.getElementById('audioFileName').textContent=file.name+' · '+formatFileSize(file.size)+' · 仅生成音频';document.getElementById('audioUpload').classList.add('has-file');document.getElementById('audioStart').disabled=false;document.getElementById('audioSuggestionsStep').style.display='none';document.getElementById('audioResultStep').style.display='none';document.getElementById('audioStatus').textContent='音频已选择，可以开始分析';document.querySelector('[name="podcastOutput"][value="audio"]').checked=true;updatePodcastOutputUi()}
 function updatePodcastOutputUi(){const choice=document.querySelector('[name="podcastOutput"]:checked')?.value||'audio';document.getElementById('podcastQuality').style.display=choice==='audio'?'none':'flex'}
 async function startAudioAnalysis(){if(!state.audioFile)return;const status=document.getElementById('audioStatus'),btn=document.getElementById('audioStart');btn.disabled=true;status.innerHTML='<span class="spinner"></span> 正在把声音变成可检查的文字…';try{const form=new FormData();form.append('media',state.audioFile);form.append('model','small');const r=await fetch('/api/transcribe',{method:'POST',body:form});const d=await r.json();if(!r.ok)throw new Error(d.error||'字幕生成失败');state.audioJobId=d.job_id;pollAudioTranscription(d.job_id)}catch(e){btn.disabled=false;status.textContent='分析失败：'+e.message}}
@@ -443,7 +507,7 @@ function downloadPodcastResult(outputName){if(state.audioProjectId)window.open('
 function formatFileSize(bytes){if(bytes<1024*1024)return (bytes/1024).toFixed(0)+' KB';if(bytes<1024*1024*1024)return (bytes/1024/1024).toFixed(0)+' MB';return (bytes/1024/1024/1024).toFixed(2)+' GB'}
 function formatEta(seconds){if(seconds<60)return '预计 '+Math.max(1,Math.round(seconds))+' 秒';const minutes=Math.round(seconds/60);return '预计 '+(minutes<60?minutes+' 分钟':Math.floor(minutes/60)+' 小时 '+minutes%60+' 分钟')}
 function estimateSmartSeconds(file,duration){const sizeMb=file.size/1024/1024;return Math.max(45,(duration||180)*1.7+sizeMb*.35+30)}
-function handlePodcastMedia(file){if(!file)return;const wantsAudio=state.mode==='audio',matches=wantsAudio?file.type.startsWith('audio/')||/\.(mp3|wav|m4a|aac|flac|ogg)$/i.test(file.name):file.type.startsWith('video/')||/\.(mp4|mov|mkv|avi|webm)$/i.test(file.name);if(!matches){toast(wantsAudio?'请选择音频文件':'请选择视频文件','error');return}state.smartVideo=file;state.activeProjectId=null;state.activeTranscript='';state.activeSegments=[];document.getElementById('smartFileName').textContent=file.name;document.getElementById('smartUpload').classList.add('has-file');const meta=document.getElementById('smartFileMeta');meta.style.display='flex';document.getElementById('smartFileSize').textContent='文件 '+formatFileSize(file.size);document.getElementById('smartFileDuration').textContent='正在读取时长…';document.getElementById('smartFileEta').textContent='预计处理中…';document.getElementById('videoChoiceStep').style.display='none';document.getElementById('proposalStep').style.display='none';const probe=document.createElement(wantsAudio?'audio':'video');probe.preload='metadata';probe.onloadedmetadata=()=>{state.smartDuration=probe.duration;URL.revokeObjectURL(probe.src);document.getElementById('smartFileDuration').textContent='时长 '+formatDuration(probe.duration);document.getElementById('smartFileEta').textContent=formatEta(estimateSmartSeconds(file,probe.duration))+'（本机估算）';document.getElementById('smartStatus').textContent=probe.duration>600||file.size>500*1024*1024?'素材已选择，建议先切分后处理':'素材已选择，可以生成字幕'};probe.onerror=()=>{document.getElementById('smartFileDuration').textContent='时长未知';document.getElementById('smartFileEta').textContent='预计时间取决于素材内容';document.getElementById('smartStatus').textContent='素材已选择，可以生成字幕'};probe.src=URL.createObjectURL(file);document.getElementById('mediaSubtitleStart').disabled=false}
+function handlePodcastMedia(file){if(!file)return;const wantsAudio=state.mode==='audio',matches=wantsAudio?file.type.startsWith('audio/')||/\.(mp3|wav|m4a|aac|flac|ogg)$/i.test(file.name):file.type.startsWith('video/')||/\.(mp4|mov|mkv|avi|webm)$/i.test(file.name);if(!matches){toast(wantsAudio?'请选择音频文件':'请选择视频文件','error');return}state.smartVideo=file;state.activeProjectId=null;state.activeTranscript='';state.activeSegments=[];state.selectedSmartProposalIndex=null;document.getElementById('smartFileName').textContent=file.name;document.getElementById('smartUpload').classList.add('has-file');const meta=document.getElementById('smartFileMeta');meta.style.display='flex';document.getElementById('smartFileSize').textContent='文件 '+formatFileSize(file.size);document.getElementById('smartFileDuration').textContent='正在读取时长…';document.getElementById('smartFileEta').textContent='预计处理中…';document.getElementById('videoChoiceStep').style.display='none';document.getElementById('proposalStep').style.display='none';document.getElementById('proposalReviewStep').style.display='none';document.getElementById('smartResult').style.display='none';const probe=document.createElement(wantsAudio?'audio':'video');probe.preload='metadata';probe.onloadedmetadata=()=>{state.smartDuration=probe.duration;URL.revokeObjectURL(probe.src);document.getElementById('smartFileDuration').textContent='时长 '+formatDuration(probe.duration);document.getElementById('smartFileEta').textContent=formatEta(estimateSmartSeconds(file,probe.duration))+'（本机估算）';document.getElementById('smartStatus').textContent=probe.duration>600||file.size>500*1024*1024?'素材已选择，建议先切分后处理':'素材已选择，可以生成字幕'};probe.onerror=()=>{document.getElementById('smartFileDuration').textContent='时长未知';document.getElementById('smartFileEta').textContent='预计时间取决于素材内容';document.getElementById('smartStatus').textContent='素材已选择，可以生成字幕'};probe.src=URL.createObjectURL(file);document.getElementById('mediaSubtitleStart').disabled=false}
 function formatDuration(seconds){const total=Math.round(seconds),m=Math.floor(total/60),s=total%60;return m?m+'分'+String(s).padStart(2,'0')+'秒':s+'秒'}
 function uploadMediaProject(form,onProgress){
   return new Promise((resolve,reject)=>{
@@ -476,6 +540,150 @@ async function startUnifiedTranscription(){
     btn.disabled=false;btn.textContent='重新生成字幕';status.textContent='字幕生成失败：'+(e.message==='Load failed'?'上传连接中断，请重新提交素材':e.message);
   }
 }
+function renderAiChannels(){
+  const channels=state.aiChannels||{},local=channels.local||{},api=channels.api||{};
+  const localEnabled=local.enabled!==false;
+  const preferred=state.aiProviderPreference||state.aiProvider||(local.available?'local':'api');
+  const selected=preferred==='local'&&!localEnabled?'api':preferred;
+  state.aiProviderPreference=selected;
+  const selectedChannel=channels[selected]||{};
+  state.aiAvailable=Boolean(selectedChannel.available);
+  state.aiProvider=selected;
+  state.aiModel=selectedChannel.model||null;
+  state.aiMessage=selectedChannel.message||'';
+  const options={
+    local:{button:document.getElementById('aiLocalOption'),description:document.getElementById('aiLocalDescription'),state:document.getElementById('aiLocalState')},
+    api:{button:document.getElementById('aiApiOption'),description:document.getElementById('aiApiDescription'),state:document.getElementById('aiApiState')},
+  };
+  Object.entries(options).forEach(([provider,refs])=>{
+    if(!refs.button)return;
+    const channel=channels[provider]||{};
+    const available=Boolean(channel.available);
+    if(provider==='local')refs.button.style.display=localEnabled?'':'none';
+    refs.button.classList.toggle('selected',provider===selected);
+    refs.button.classList.toggle('unavailable',!available);
+    refs.button.setAttribute('aria-pressed',provider===selected?'true':'false');
+    if(provider==='local'){
+      refs.description.textContent=available?(channel.model+' · 内容留在这台电脑上。'):'本机模型当前不可用，可检查本机服务。';
+    }else{
+      refs.description.textContent=available?(channel.model+' · 使用已配置的在线服务。'):'在线 AI 尚未配置服务密钥。';
+    }
+    refs.state.textContent=provider===selected?'当前选择':(available?'可用':'暂不可用');
+  });
+  const availability=document.getElementById('aiAvailability');
+  if(availability){
+    availability.textContent=selectedChannel.message||(state.aiAvailable?'可以开始智能内容分析':'请选择可用的 AI 通道；精简剪辑可以正常使用');
+  }
+  const analyzeButton=document.getElementById('smartAnalyzeButton');
+  if(analyzeButton)analyzeButton.disabled=!state.aiAvailable;
+  renderAiConfiguration(local,api,selected,localEnabled);
+}
+
+function chooseAiProvider(provider){
+  if(!['local','api'].includes(provider))return;
+  state.aiProviderPreference=provider;
+  renderAiChannels();
+  const channel=state.aiChannels?.[provider];
+  if(!channel){toast('请先生成字幕，系统才能检查这个 AI 通道','error');return}
+  if(!channel.available&&provider==='local')toast(channel.message||'本机模型暂时不可用','error');
+}
+
+function localModelLabel(model){
+  if(/:3b(?:$|-)/i.test(model))return model+'（较快，理解较基础）';
+  if(/:7b(?:$|-)/i.test(model))return model+'（平衡，等待较久）';
+  if(/:14b(?:$|-)/i.test(model))return model+'（质量较高，当前电脑很慢）';
+  if(/deepseek-r1/i.test(model))return model+'（推理模型，较慢）';
+  return model;
+}
+
+function localModelHelp(model){
+  if(/:3b(?:$|-)/i.test(model))return '速度优先，适合先试流程；内容方案可能比较概括。';
+  if(/:7b(?:$|-)/i.test(model))return '理解能力和速度较平衡，在当前电脑上通常需要几分钟。';
+  if(/:14b(?:$|-)/i.test(model))return '理解更细，但当前电脑实测等待时间很长，建议优先使用在线 AI。';
+  return '模型越大通常理解更细，但等待时间和内存占用也会增加。';
+}
+
+function presetForBaseUrl(baseUrl){
+  return Object.entries(SMART_AI_PRESETS).find(([,config])=>config.baseUrl===baseUrl)?.[0]||'custom';
+}
+
+function renderAiConfiguration(local,api,selected,localEnabled=true){
+  const localPanel=document.getElementById('aiLocalConfig'),apiPanel=document.getElementById('aiApiSmartConfig');
+  if(!localPanel||!apiPanel)return;
+  localPanel.style.display=localEnabled&&selected==='local'?'block':'none';
+  apiPanel.style.display=selected==='api'?'block':'none';
+
+  const localSelect=document.getElementById('aiLocalModelSelect');
+  const models=Array.isArray(local.models)?local.models:[];
+  const signature=models.join('|')+'::'+(local.model||'');
+  if(localSelect.dataset.signature!==signature){
+    localSelect.innerHTML='';
+    models.forEach(model=>{const option=document.createElement('option');option.value=model;option.textContent=localModelLabel(model);localSelect.appendChild(option)});
+    if(local.model&&!models.includes(local.model)){const option=document.createElement('option');option.value=local.model;option.textContent=localModelLabel(local.model);localSelect.appendChild(option)}
+    localSelect.value=local.model||models[0]||'';
+    localSelect.disabled=!models.length;
+    localSelect.dataset.signature=signature;
+  }
+  document.getElementById('aiLocalModelHelp').textContent=localModelHelp(localSelect.value||local.model||'');
+
+  const baseInput=document.getElementById('smartAiBaseUrl'),modelInput=document.getElementById('smartAiModel'),preset=document.getElementById('smartAiPreset');
+  const apiSignature=(api.base_url||'')+'::'+(api.model||'')+'::'+Boolean(api.configured);
+  if(apiPanel.dataset.signature!==apiSignature){
+    baseInput.value=api.base_url||'https://api.openai.com/v1';
+    modelInput.value=api.model||'gpt-4.1-mini';
+    preset.value=presetForBaseUrl(baseInput.value);
+    apiPanel.dataset.signature=apiSignature;
+  }
+  document.getElementById('smartAiApiKey').placeholder=api.configured?'已配置，留空可保留':'粘贴服务密钥';
+  document.getElementById('clearSmartAiConfigButton').style.display=api.configured?'inline-flex':'none';
+  const modelList=document.getElementById('smartAiModelList');
+  if(Array.isArray(api.models)&&api.models.length){modelList.innerHTML='';api.models.forEach(model=>{const option=document.createElement('option');option.value=model;modelList.appendChild(option)})}
+}
+
+function updateSmartAiPreset(){
+  const preset=document.getElementById('smartAiPreset').value,config=SMART_AI_PRESETS[preset];
+  if(!config)return;
+  document.getElementById('smartAiBaseUrl').value=config.baseUrl;
+  document.getElementById('smartAiModel').value=config.model;
+}
+
+async function saveLocalAiModel(){
+  const model=document.getElementById('aiLocalModelSelect').value,status=document.getElementById('aiLocalConfigStatus');
+  if(!model)return;
+  status.className='ai-config-status';status.innerHTML='<span class="spinner"></span> 正在切换模型…';
+  try{
+    const response=await fetch('/api/ai/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider:'local',model})});
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||'模型切换失败');
+    state.aiChannels=data.ai_channels;state.aiProviderPreference='local';renderAiChannels();
+    status.className='ai-config-status ok';status.textContent=data.message;
+  }catch(error){status.className='ai-config-status fail';status.textContent=error.message;toast(error.message,'error')}
+}
+
+async function saveSmartAiConfig(){
+  const button=document.getElementById('saveSmartAiConfigButton'),status=document.getElementById('smartAiConfigStatus');
+  const payload={provider:'api',base_url:document.getElementById('smartAiBaseUrl').value.trim(),model:document.getElementById('smartAiModel').value.trim(),api_key:document.getElementById('smartAiApiKey').value.trim()};
+  button.disabled=true;status.className='ai-config-status';status.innerHTML='<span class="spinner"></span> 正在检测在线 AI…';
+  try{
+    const response=await fetch('/api/ai/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||'在线 AI 配置失败');
+    state.aiChannels=data.ai_channels;state.aiProviderPreference='api';document.getElementById('smartAiApiKey').value='';document.getElementById('aiApiSmartConfig').dataset.signature='';renderAiChannels();
+    status.className='ai-config-status ok';status.textContent=data.message;toast('在线 AI 已连接','success');
+  }catch(error){status.className='ai-config-status fail';status.textContent=error.message;toast(error.message,'error')}
+  finally{button.disabled=false}
+}
+
+async function clearSmartAiConfig(){
+  const status=document.getElementById('smartAiConfigStatus');
+  try{
+    const response=await fetch('/api/ai/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider:'api',clear:true})});
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||'清除失败');
+    state.aiChannels=data.ai_channels;document.getElementById('smartAiApiKey').value='';renderAiChannels();status.className='ai-config-status ok';status.textContent=data.message;
+  }catch(error){status.className='ai-config-status fail';status.textContent=error.message}
+}
+
 function pollUnifiedTranscription(projectId){
   const status=document.getElementById('smartStatus'),btn=document.getElementById('mediaSubtitleStart');
   let connectionFailures=0;
@@ -497,12 +705,9 @@ function pollUnifiedTranscription(projectId){
       const preparedResponse=await fetch('/api/media/'+projectId+'/prepare',{method:'POST'});
       const prepared=await preparedResponse.json();
       if(!preparedResponse.ok)throw new Error(prepared.error||'项目准备失败');
-      state.activeProjectId=prepared.project_id;state.activeSourceKind=prepared.source_kind;state.activeTranscript=prepared.transcript;state.activeSegments=prepared.segments;state.aiAvailable=prepared.ai_available;state.aiProvider=prepared.ai_provider;state.aiModel=prepared.ai_model;state.aiMessage=prepared.ai_message||'';state.audioCuts=prepared.suggestions||[];
+      state.activeProjectId=prepared.project_id;state.activeSourceKind=prepared.source_kind;state.activeTranscript=prepared.transcript;state.activeSegments=prepared.segments;state.aiChannels=prepared.ai_channels||{local:null,api:null};state.aiProviderPreference=prepared.ai_provider||null;state.aiAvailable=prepared.ai_available;state.aiProvider=prepared.ai_provider;state.aiModel=prepared.ai_model;state.aiMessage=prepared.ai_message||'';state.audioCuts=prepared.suggestions||[];renderAiChannels();
       btn.disabled=false;btn.textContent='重新生成字幕';
       document.getElementById('videoChoiceStep').style.display='block';
-      const aiButton=document.getElementById('smartAnalyzeButton'),availability=document.getElementById('aiAvailability');
-      aiButton.disabled=!state.aiAvailable;
-      availability.textContent=state.aiMessage||(state.aiAvailable?'智能内容分析已经可以使用':'智能内容分析尚未配置；精简剪辑可以正常使用');
       status.textContent=reused?'已复用之前生成的字幕，请选择智能剪辑或精简剪辑':'字幕已经生成，请选择智能剪辑或精简剪辑';
     }catch(e){
       connectionFailures++;
@@ -511,11 +716,62 @@ function pollUnifiedTranscription(projectId){
     }
   },1000);
 }
-async function startSmartAnalysis(){if(!state.activeProjectId)return;if(!state.aiAvailable){toast(state.aiMessage||'智能内容分析尚未配置，请使用精简剪辑','error');return}const status=document.getElementById('smartStatus'),button=document.getElementById('smartAnalyzeButton');button.disabled=true;status.innerHTML='<span class="spinner"></span> '+(state.aiProvider==='local'?'本机模型':'在线 AI')+'正在理解完整内容…';try{const response=await fetch('/api/smart/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({project_id:state.activeProjectId})});const data=await response.json();if(!response.ok)throw new Error(data.error||'智能分析失败');state.smartProjectId=data.project_id;renderProposals(data.proposals,data.understanding);document.getElementById('videoChoiceStep').style.display='none';status.textContent=(data.generation_mode==='local'?'本机模型':'在线 AI')+'已生成 '+data.proposals.length+' 个方案，请选择一个'}catch(e){button.disabled=false;status.textContent='智能分析失败：'+e.message;toast(e.message,'error')}}
-function enterFineFromPreparedMedia(){if(!state.activeTranscript){toast('请先生成字幕','error');return}state.fineProjectId=state.activeProjectId;state.fineSourceKind=state.activeSourceKind;state.fineDownloadUrl=null;handleSubtitleText(state.activeTranscript,'本次素材字幕.srt');const isAudio=state.activeSourceKind==='audio';document.getElementById('fineExportTitle').textContent=isAudio?'音频自动剪切':'视频自动剪切';document.getElementById('fineSourceStatus').textContent=(isAudio?'音频':'视频')+'素材已从上一步带入：'+(state.smartVideo?.name||'当前项目')+'。无需再次上传。';document.getElementById('fineQualityRow').style.display=isAudio?'none':'flex';document.getElementById('fineQualityHelp').style.display=isAudio?'none':'block';document.getElementById('btnCut').textContent=isAudio?'✂ 导出剪辑音频':'✂ 导出剪辑视频';if(!isAudio){state.videoFile=state.smartVideo}document.getElementById('smartWorkspace').classList.add('hidden');state.mode='fine';toast('已进入精简剪辑，字幕和素材已经准备好','success')}
-function renderProposals(proposals,understanding){document.getElementById('proposalStep').style.display='block';const u=understanding||{};document.getElementById('smartUnderstanding').innerHTML='<strong>我们对这段内容的理解</strong><div class="label">主题</div>'+esc(u.topic||'暂时无法判断')+'<div class="label">内容概览</div>'+esc(u.summary||'请结合下方方案判断')+'<div class="label">适合观众</div>'+esc(u.audience||'暂时无法判断');document.getElementById('proposalGrid').innerHTML=proposals.map((p,i)=>'<div class="proposal"><h3>'+esc(p.title)+'</h3><div class="hook">开头建议：'+esc(p.hook)+'</div><div class="summary">'+esc(p.summary)+'</div><div class="meta">'+msToTc(p.start*1000)+' → '+msToTc(p.end*1000)+' · '+p.duration.toFixed(1)+' 秒</div><button class="btn btn-primary btn-small" onclick="chooseProposal('+i+')">选择这个方案</button></div>').join('');state.smartProposals=proposals}
+async function startSmartAnalysis(){
+  if(!state.activeProjectId)return;
+  const provider=state.aiProviderPreference||state.aiProvider;
+  const channel=state.aiChannels?.[provider];
+  if(!channel?.available){toast(channel?.message||state.aiMessage||'智能内容分析暂时不可用，请使用精简剪辑','error');return}
+  const status=document.getElementById('smartStatus'),button=document.getElementById('smartAnalyzeButton');
+  button.disabled=true;
+  status.innerHTML='<span class="spinner"></span> '+(provider==='local'?'本机模型':'在线 AI')+'正在理解完整内容…';
+  try{
+    const response=await fetch('/api/smart/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({project_id:state.activeProjectId,provider})});
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||'智能分析失败');
+    state.smartProjectId=data.project_id;
+    renderProposals(data.proposals,data.understanding);
+    document.getElementById('videoChoiceStep').style.display='none';
+    status.textContent=(data.generation_mode==='local'?'本机模型':'在线 AI')+'已生成 '+data.proposals.length+' 个方案，请选择一个';
+  }catch(e){
+    button.disabled=false;
+    status.textContent='智能分析失败：'+e.message;
+    toast(e.message,'error');
+  }
+}
+function enterFineFromPreparedMedia(){if(!state.activeTranscript){toast('请先生成字幕','error');return}state.fineProjectId=state.activeProjectId;state.fineSourceKind=state.activeSourceKind;state.fineDownloadUrl=null;state.fineDownloadUrls={};handleSubtitleText(state.activeTranscript,'本次素材字幕.srt');const isAudio=state.activeSourceKind==='audio';document.getElementById('fineExportTitle').textContent=isAudio?'音频自动剪切':'视频自动剪切';document.getElementById('fineSourceStatus').textContent=(isAudio?'音频':'视频')+'素材已从上一步带入：'+(state.smartVideo?.name||'当前项目')+'。无需再次上传。';document.getElementById('fineQualityRow').style.display=isAudio?'none':'flex';document.getElementById('fineQualityHelp').style.display=isAudio?'none':'block';document.getElementById('fineSyncAudioRow').style.display=isAudio?'none':'flex';document.getElementById('fineSyncAudio').checked=true;document.getElementById('btnDownloadFineVideo').style.display='none';document.getElementById('btnDownloadFineAudio').style.display='none';updateFineExportButton();if(!isAudio){state.videoFile=state.smartVideo}document.getElementById('smartWorkspace').classList.add('hidden');state.mode='fine';toast('已进入精简剪辑，字幕和素材已经准备好','success')}
+function renderProposals(proposals,understanding){document.getElementById('proposalStep').style.display='block';document.getElementById('proposalReviewStep').style.display='none';document.getElementById('smartResult').style.display='none';state.selectedSmartProposalIndex=null;const u=understanding||{};document.getElementById('smartUnderstanding').innerHTML='<strong>我们对这段内容的理解</strong><div class="label">主题</div>'+esc(u.topic||'暂时无法判断')+'<div class="label">内容概览</div>'+esc(u.summary||'请结合下方方案判断')+'<div class="label">适合观众</div>'+esc(u.audience||'暂时无法判断');document.getElementById('proposalGrid').innerHTML=proposals.map((p,i)=>'<div class="proposal"><h3>'+esc(p.title)+'</h3><div class="hook">开头建议：'+esc(p.hook)+'</div><div class="summary">'+esc(p.summary)+'</div><div class="meta">'+msToTc(p.start*1000)+' → '+msToTc(p.end*1000)+' · '+p.duration.toFixed(1)+' 秒</div><button class="btn btn-primary btn-small" onclick="reviewSmartProposal('+i+')">查看字幕并确认</button></div>').join('');state.smartProposals=proposals}
 function rejectSmartProposals(){enterFineFromPreparedMedia()}
-async function chooseProposal(index){const proposal=state.smartProposals[index],status=document.getElementById('smartResultStatus'),duration=state.activeSegments.length?state.activeSegments[state.activeSegments.length-1].end:proposal.end,cuts=[...(proposal.cuts||[])];if(proposal.start>.1)cuts.push({start:0,end:proposal.start,reason:'方案开始前'});if(duration>proposal.end+.1)cuts.push({start:proposal.end,end:duration,reason:'方案结束后'});const outputs=state.activeSourceKind==='audio'?['audio']:['audio','video'];document.getElementById('smartResult').style.display='block';document.getElementById('smartAudioDownload').style.display='none';document.getElementById('smartVideoDownload').style.display='none';status.innerHTML='<span class="spinner"></span> 正在按方案生成结果…';try{const r=await fetch('/api/podcast/render',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({project_id:state.activeProjectId,cuts,outputs,quality:'medium',allow_unchanged:true})});const d=await r.json();if(!r.ok)throw new Error(d.error||'生成失败');pollSmartRender(state.activeProjectId)}catch(e){status.textContent='生成失败：'+e.message;toast('❌ '+e.message,'error')}}
+function reviewSmartProposal(index){
+  const proposal=state.smartProposals?.[index];
+  if(!proposal){toast('这个方案已经失效，请重新分析','error');return}
+  state.selectedSmartProposalIndex=index;
+  const cuts=proposal.cuts||[];
+  const segments=state.activeSegments.filter(segment=>segment.end>proposal.start&&segment.start<proposal.end);
+  const cutSeconds=cuts.reduce((total,cut)=>total+Math.max(0,Math.min(proposal.end,cut.end)-Math.max(proposal.start,cut.start)),0);
+  const retainedSeconds=Math.max(0,proposal.end-proposal.start-cutSeconds);
+  document.getElementById('proposalReviewTitle').textContent=proposal.title;
+  document.getElementById('proposalReviewSummary').textContent=proposal.summary||proposal.hook||'请核对下方字幕内容。';
+  document.getElementById('proposalReviewMeta').innerHTML='<span>'+msToTc(proposal.start*1000)+' → '+msToTc(proposal.end*1000)+'</span><span>预计保留 '+formatDuration(retainedSeconds)+'</span><span>'+segments.length+' 段字幕</span>';
+  document.getElementById('proposalReviewTranscript').innerHTML=segments.length?segments.map(segment=>{
+    const hasCut=cuts.some(cut=>Math.min(segment.end,cut.end)>Math.max(segment.start,cut.start)+.02);
+    return '<div class="proposal-transcript-row'+(hasCut?' has-cut':'')+'"><span class="time">'+msToTc(segment.start*1000)+' → '+msToTc(segment.end*1000)+'</span><span class="text">'+esc(segment.text)+'</span><span class="review-state">'+(hasCut?'含建议删除部分':'保留')+'</span></div>';
+  }).join(''):'<div class="proposal-transcript-empty">这个时间范围内没有可显示的字幕，请返回选择其他方案。</div>';
+  document.getElementById('confirmSmartProposalButton').disabled=!segments.length;
+  document.getElementById('confirmSmartProposalButton').textContent='确认字幕，开始生成';
+  document.getElementById('smartResult').style.display='none';
+  const reviewStep=document.getElementById('proposalReviewStep');reviewStep.style.display='block';reviewStep.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function backToSmartProposals(){state.selectedSmartProposalIndex=null;document.getElementById('proposalReviewStep').style.display='none';document.getElementById('smartResult').style.display='none';document.getElementById('proposalStep').scrollIntoView({behavior:'smooth',block:'start'})}
+async function confirmSmartProposal(){
+  const index=state.selectedSmartProposalIndex,proposal=Number.isInteger(index)?state.smartProposals?.[index]:null;
+  if(!proposal){toast('请先选择并核对一个方案','error');return}
+  const button=document.getElementById('confirmSmartProposalButton'),status=document.getElementById('smartResultStatus'),duration=state.activeSegments.length?state.activeSegments[state.activeSegments.length-1].end:proposal.end,cuts=[...(proposal.cuts||[])];
+  if(proposal.start>.1)cuts.push({start:0,end:proposal.start,reason:'方案开始前'});
+  if(duration>proposal.end+.1)cuts.push({start:proposal.end,end:duration,reason:'方案结束后'});
+  const outputs=state.activeSourceKind==='audio'?['audio']:['audio','video'];
+  button.disabled=true;button.textContent='正在提交方案';document.getElementById('smartResult').style.display='block';document.getElementById('smartAudioDownload').style.display='none';document.getElementById('smartVideoDownload').style.display='none';status.innerHTML='<span class="spinner"></span> 正在按确认的字幕生成结果…';
+  try{const r=await fetch('/api/podcast/render',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({project_id:state.activeProjectId,cuts,outputs,quality:'medium',allow_unchanged:true})});const d=await r.json();if(!r.ok)throw new Error(d.error||'生成失败');document.getElementById('smartResult').scrollIntoView({behavior:'smooth',block:'start'});pollSmartRender(state.activeProjectId)}catch(e){button.disabled=false;button.textContent='确认字幕，开始生成';status.textContent='生成失败：'+e.message;toast('❌ '+e.message,'error')}
+}
 async function pollSmartRender(projectId){const status=document.getElementById('smartResultStatus'),iv=setInterval(async()=>{try{const d=await (await fetch('/api/podcast/progress/'+projectId)).json();if(d.status==='running')status.innerHTML='<span class="spinner"></span> '+(d.message||'生成中…');else if(d.status==='done'){clearInterval(iv);document.getElementById('smartAudioDownload').style.display=d.outputs?.audio?.status==='done'?'inline-flex':'none';document.getElementById('smartVideoDownload').style.display=d.outputs?.video?.status==='done'?'inline-flex':'none';status.textContent='智能方案已生成完成，可以下载';toast('✅ 智能剪辑完成','success')}else if(d.status==='error'){clearInterval(iv);status.textContent='生成失败：'+(d.error||'')}}catch(e){}},1000)}
 function downloadSmartResult(outputName){if(state.activeProjectId)window.open('/api/podcast/download/'+outputName+'/'+state.activeProjectId,'_blank')}
 
@@ -565,6 +821,7 @@ function handleFile(file){if(!file)return;const r=new FileReader();r.onload=e=>h
 function handleSubtitleText(text,name){document.getElementById('fileName').textContent=name||'字幕文件';document.getElementById('uploadArea').classList.add('has-file');state.segments=parseSRT(text);state.cutSet=new Set();renderTimeline();updateStats();document.getElementById('btnAuto').disabled=false;document.getElementById('btnClear').disabled=false;toast('✅ 已载入 '+state.segments.length+' 条字幕段','success')}
 function handleVideo(file){if(!file)return;state.videoFile=file;document.getElementById('videoFileName').textContent=file.name;document.getElementById('videoZone').classList.add('has-file');updateCutButton()}
 function updateCutButton(){document.getElementById('btnCut').disabled=!((state.fineProjectId||state.videoFile)&&state.cutSet.size>0)}
+function updateFineExportButton(){const button=document.getElementById('btnCut');if(state.fineSourceKind==='audio'){button.textContent='✂ 导出剪辑音频';return}button.textContent=document.getElementById('fineSyncAudio').checked?'✂ 导出视频和同步音频':'✂ 只导出剪辑视频'}
 
 function renderFillerTags(){const c=document.getElementById('fillerTags');c.innerHTML='';for(const w of state.fillerWords){const active=state.activeFillers.has(w)||state.activeFillers.size===0;const tag=document.createElement('span');tag.className='filler-tag'+(active?' active':'');tag.innerHTML=esc(w)+' <span class="del" onclick="event.stopPropagation();removeFiller(\''+esc(w)+'\')">✕</span>';tag.onclick=()=>toggleFiller(w);c.appendChild(tag)}}
 function toggleFiller(w){if(state.activeFillers.has(w))state.activeFillers.delete(w);else state.activeFillers.add(w);renderFillerTags();if(state.segments.length)highlightFillers()}
@@ -590,20 +847,18 @@ function updateStats(){if(!state.segments.length){document.getElementById('stDur
 function msToTimeStr(ms){const t=Math.round(ms/1000);return t>=60?Math.floor(t/60)+'分'+t%60+'秒':t+'秒'}
 function renderCutList(){const cutSegs=state.segments.filter(seg=>state.cutSet.has(seg.id));document.getElementById('cutCount').textContent=cutSegs.length+' 刀';const body=document.getElementById('cutListBody'),total=document.getElementById('cutTotal');if(!cutSegs.length){body.innerHTML='<div class="cut-empty">暂无标记</div>';total.style.display='none';return}total.style.display='flex';body.innerHTML='';for(const seg of cutSegs){const reasons=seg._cutReasons||[],words=[...new Set((seg._fillerMatches||[]).map(m=>m.word))];const rt=reasons.length?reasons.join('; '):(words.length?'口癖: '+words.slice(0,3).join(','):'手动标记');const item=document.createElement('div');item.className='cut-item';item.innerHTML='<div class="cut-time">'+msToTc(seg.startMs)+' → '+msToTc(seg.endMs)+' ('+(seg.durationMs/1000).toFixed(1)+'s)</div><div class="cut-reason">'+esc(rt)+'</div>';item.onclick=()=>{const el=document.getElementById('seg-'+seg.id);if(el)el.scrollIntoView({behavior:'smooth',block:'center'})};body.appendChild(item)}const t=cutSegs.reduce((s,seg)=>s+seg.durationMs,0),ts=state.segments.reduce((s,seg)=>s+seg.durationMs,0);document.getElementById('cutTotalTime').textContent=msToTimeStr(t)+' ('+(t/1000).toFixed(1)+'s)';document.getElementById('cutPercent').textContent=ts>0?(t/ts*100).toFixed(1)+'%':'0%'}
 function clearAll(){state.cutSet=new Set();for(const s of state.segments){s._isGap=false;s._gapAfter=0;s._cutReasons=undefined;s._fillerMatches=undefined}renderTimeline();updateStats();updateCutButton()}
-function scrollToFirstCut(){if(!state.cutSet.size)return;const f=state.segments.find(seg=>state.cutSet.has(seg.id));if(f){const el=document.getElementById('seg-'+f.id);if(el)el.scrollIntoView({behavior:'smooth',block:'center'})}}
-
 async function startAutoCut(){
   if(!state.cutSet.size){toast('请先标记需要删除的片段','error');return}
   const cuts=state.segments.filter(seg=>state.cutSet.has(seg.id)).map(seg=>({start:seg.startMs/1000,end:seg.endMs/1000,reason:(seg._cutReasons||[]).join('; ')||'手动标记'})).filter(c=>c.end>c.start+0.1);
   if(!cuts.length){toast('没有有效的剪辑段','error');return}
-  const banner=document.getElementById('processingBanner');banner.classList.add('active');document.getElementById('procSpinner').style.display='inline-block';document.getElementById('btnDownload').style.display='none';document.getElementById('procBar').style.width='0%';document.getElementById('procInfo').innerHTML='<strong>正在提交…</strong>';document.getElementById('btnCut').disabled=true;
+  const banner=document.getElementById('processingBanner');banner.classList.add('active');document.getElementById('procSpinner').style.display='inline-block';document.getElementById('btnDownload').style.display='none';document.getElementById('btnDownloadFineVideo').style.display='none';document.getElementById('btnDownloadFineAudio').style.display='none';document.getElementById('procBar').style.width='0%';document.getElementById('procInfo').innerHTML='<strong>正在提交…</strong>';document.getElementById('btnCut').disabled=true;
   try{
     if(state.fineProjectId){
-      const output=state.fineSourceKind==='audio'?'audio':'video';
-      const resp=await fetch('/api/podcast/render',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({project_id:state.fineProjectId,cuts,outputs:[output],quality:document.getElementById('qualitySelect').value})});
+      const outputs=state.fineSourceKind==='audio'?['audio']:(document.getElementById('fineSyncAudio').checked?['video','audio']:['video']);
+      const resp=await fetch('/api/podcast/render',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({project_id:state.fineProjectId,cuts,outputs,quality:document.getElementById('qualitySelect').value})});
       const result=await resp.json();if(!resp.ok)throw new Error(result.error||'请求失败');
-      state.fineDownloadUrl='/api/podcast/download/'+output+'/'+state.fineProjectId;
-      pollFineProjectRender(state.fineProjectId,output);
+      state.fineDownloadUrls={};outputs.forEach(output=>{state.fineDownloadUrls[output]='/api/podcast/download/'+output+'/'+state.fineProjectId});
+      pollFineProjectRender(state.fineProjectId,outputs);
       return;
     }
     if(!state.videoFile)throw new Error('请上传视频文件');
@@ -611,11 +866,12 @@ async function startAutoCut(){
     const resp=await fetch('/api/cut',{method:'POST',body:form});const result=await resp.json();if(!resp.ok)throw new Error(result.error||'请求失败');state.jobId=result.job_id;state.fineDownloadUrl=null;pollLegacyVideoRender(result.job_id);
   }catch(e){banner.classList.remove('active');document.getElementById('btnCut').disabled=false;toast('❌ '+e.message,'error')}
 }
-function pollFineProjectRender(projectId,output){const iv=setInterval(async()=>{try{const d=await (await fetch('/api/podcast/progress/'+projectId)).json();if(d.status==='running'){document.getElementById('procBar').style.width=(d.progress||0)+'%';document.getElementById('procInfo').innerHTML='<strong>剪辑中…</strong> '+(d.message||'')}else if(d.status==='done'){clearInterval(iv);finishFineRender(output==='audio'?'音频':'视频')}else if(d.status==='error'){clearInterval(iv);failFineRender(d.error)}}catch(e){}},1000)}
+function pollFineProjectRender(projectId,outputs){const iv=setInterval(async()=>{try{const d=await (await fetch('/api/podcast/progress/'+projectId)).json();if(d.status==='running'){document.getElementById('procBar').style.width=(d.progress||0)+'%';document.getElementById('procInfo').innerHTML='<strong>剪辑中…</strong> '+(d.message||'')}else if(d.status==='done'){clearInterval(iv);finishFineRender(outputs)}else if(d.status==='error'){clearInterval(iv);failFineRender(d.error)}}catch(e){}},1000)}
 function pollLegacyVideoRender(jobId){const iv=setInterval(async()=>{try{const d=await (await fetch('/api/progress/'+jobId)).json();if(d.status==='running'){document.getElementById('procBar').style.width=d.progress+'%';document.getElementById('procInfo').innerHTML='<strong>剪辑中…</strong> '+(d.message||'')}else if(d.status==='done'){clearInterval(iv);finishFineRender('视频')}else if(d.status==='error'){clearInterval(iv);failFineRender(d.error)}}catch(e){}},1000)}
-function finishFineRender(label){document.getElementById('procBar').style.width='100%';document.getElementById('procSpinner').style.display='none';document.getElementById('btnDownload').style.display='inline-flex';document.getElementById('procInfo').innerHTML='<strong>剪辑完成！</strong> 点击下载'+label;document.getElementById('btnCut').disabled=false;toast(label+'剪辑完成','success')}
+function finishFineRender(result){const outputs=Array.isArray(result)?result:null,label=outputs?(outputs.includes('video')&&outputs.includes('audio')?'视频和音频':outputs.includes('video')?'视频':'音频'):result;document.getElementById('procBar').style.width='100%';document.getElementById('procSpinner').style.display='none';document.getElementById('btnDownload').style.display=outputs?'none':'inline-flex';document.getElementById('btnDownloadFineVideo').style.display=outputs?.includes('video')?'inline-flex':'none';document.getElementById('btnDownloadFineAudio').style.display=outputs?.includes('audio')?'inline-flex':'none';document.getElementById('procInfo').innerHTML='<strong>剪辑完成！</strong> 下载'+label;document.getElementById('btnCut').disabled=false;toast(label+'剪辑完成','success')}
 function failFineRender(error){document.getElementById('procSpinner').style.display='none';document.getElementById('procInfo').innerHTML='<strong>处理失败</strong> '+(error||'');document.getElementById('btnCut').disabled=false}
 function downloadResult(){if(state.fineDownloadUrl)window.open(state.fineDownloadUrl,'_blank');else if(state.jobId)window.open('/api/download/'+state.jobId,'_blank')}
+function downloadFineOutput(output){const url=state.fineDownloadUrls[output];if(url)window.open(url,'_blank')}
 
 function openExportModal(){const cutSegs=state.segments.filter(seg=>state.cutSet.has(seg.id));if(!cutSegs.length){toast('还没有标记任何剪辑段','error');return}const t=cutSegs.reduce((s,seg)=>s+seg.durationMs,0),ts=state.segments.reduce((s,seg)=>s+seg.durationMs,0);let lines=['═══════════════════════════════════════','  剪辑清单 · SRT Cutter','  文件: '+(document.getElementById('fileName').textContent||'-'),'  生成: '+new Date().toLocaleString('zh-CN'),'═══════════════════════════════════════',''];cutSegs.forEach((seg,i)=>{const r=(seg._cutReasons||[]).join('; ')||[...new Set((seg._fillerMatches||[]).map(m=>m.word))].slice(0,3).join(',')||'手动标记';lines.push('  ✕ '+(i+1)+'. '+msToTc(seg.startMs)+' → '+msToTc(seg.endMs)+'  ['+(seg.durationMs/1000).toFixed(1)+'秒] '+r);lines.push('     "'+seg.text+'"');lines.push('')});lines.push('═══════════════════════════════════════');lines.push('  总删除: '+msToTimeStr(t)+' ('+(t/1000).toFixed(1)+'s)');lines.push('  总时长: '+msToTimeStr(ts));lines.push('  精简比: '+(t/ts*100).toFixed(1)+'%');lines.push('═══════════════════════════════════════');lines.push('');lines.push('操作指引：在剪映时间线上找到对应时间点剪切即可。');document.getElementById('exportText').value=lines.join('\n');document.getElementById('exportModalTitle').textContent='📋 导出剪辑单';document.getElementById('exportModalDesc').textContent='复制以下内容到剪映，按顺序手动剪切';document.getElementById('exportModal').classList.add('open')}
 function copyExport(){navigator.clipboard.writeText(document.getElementById('exportText').value);toast('📋 已复制','success')}
@@ -643,7 +899,7 @@ function applyAiSuggestions(){if(!state._aiCuts)return;for(const c of state._aiC
 function closeModal(id){document.getElementById(id).classList.remove('open')}
 document.querySelectorAll('.modal-overlay').forEach(el=>{el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open')})})
 
-function showQuickTour(){document.getElementById('exportText').value='📖 精简剪辑使用说明\n\n1️⃣ 字幕已经生成并载入时间轴\n\n2️⃣ 一键扫描\n   自动标记口癖、重复表达和长停顿\n   也可点击字幕段手动标记或取消\n\n3️⃣ 检查剪辑清单\n   确认每个准备删除的时间段\n\n4️⃣ 导出结果\n   音频素材导出 MP3\n   视频素材导出剪辑后的视频\n\n5️⃣ 备份方案\n   也可以导出剪辑单，转到其他软件继续处理';document.getElementById('exportModalTitle').textContent='📖 使用说明';document.getElementById('exportModalDesc').textContent='精简剪辑快速上手';document.getElementById('exportModal').classList.add('open')}
+function showQuickTour(){document.getElementById('exportText').value='📖 精简剪辑使用说明\n\n1️⃣ 确认字幕\n   可以直接使用本工具生成的字幕\n   如果更看重准确度，可用同一个原视频在剪映识别并导出 SRT，再回到这里替换\n   请不要先裁剪、变速或改变视频开头，否则时间码会错位\n\n2️⃣ 一键扫描\n   自动标记口癖、重复表达和长停顿\n   也可点击字幕段手动标记或取消\n   每个标记会删除整条字幕对应的时间段，不是只删除高亮词\n\n3️⃣ 检查剪辑清单\n   确认每个准备删除的时间段\n\n4️⃣ 导出结果\n   音频素材导出 MP3\n   视频素材可同步导出视频和音频 MP3\n\n5️⃣ 备份方案\n   也可以导出剪辑单，转到其他软件继续处理';document.getElementById('exportModalTitle').textContent='📖 使用说明';document.getElementById('exportModalDesc').textContent='精简剪辑快速上手';document.getElementById('exportModal').classList.add('open')}
 
 function toast(msg,type){const el=document.createElement('div');el.className='toast'+(type?' '+type:'');el.textContent=msg;document.getElementById('toastContainer').appendChild(el);setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>el.remove(),300)},3000)}
 document.getElementById('silenceThreshold').addEventListener('change',()=>{if(state.segments.length){detectGaps();renderTimeline();updateStats()}})

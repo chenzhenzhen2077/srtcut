@@ -47,3 +47,30 @@ def test_local_mode_reports_missing_model(monkeypatch):
     assert result["available"] is False
     assert "没有找到" in result["message"]
     assert result["models"] == ["qwen2.5:7b"]
+
+
+def test_resolve_ai_channels_exposes_local_and_api(monkeypatch):
+    monkeypatch.setattr(ai, "list_local_models", lambda *_args, **_kwargs: ["qwen2.5:14b"])
+
+    channels = ai.resolve_ai_channels(_config(AI_API_KEY="secret"))
+
+    assert channels["local"]["available"] is True
+    assert channels["local"]["enabled"] is True
+    assert channels["local"]["provider"] == "local"
+    assert channels["api"]["available"] is True
+    assert channels["api"]["configured"] is True
+    assert channels["active"]["provider"] == "api"
+
+
+def test_resolve_ai_channels_marks_disabled_local_channel(monkeypatch):
+    def fail_if_called(*_args, **_kwargs):
+        raise AssertionError("disabled local service should not be probed")
+
+    monkeypatch.setattr(ai, "list_local_models", fail_if_called)
+    channels = ai.resolve_ai_channels(
+        _config(AI_LOCAL_ENABLED=False, AI_PROVIDER="api", AI_API_KEY="secret")
+    )
+
+    assert channels["local"]["enabled"] is False
+    assert channels["local"]["available"] is False
+    assert channels["active"]["provider"] == "api"
