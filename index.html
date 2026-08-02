@@ -318,16 +318,15 @@ input[type=file]{display:none}
     <aside class="sidebar">
       <div class="sidebar-scroll">
         <div class="fine-guide"><strong>精简剪辑流程</strong><br>① 使用当前字幕，也可以用剪映 SRT 替换<br>② 点击“一键扫描”找出口癖、重复词和长停顿<br>③ 点击字幕段落可手动标记或取消<br>④ 导出剪辑后的音频或视频</div>
-        <div class="jianying-subtitle-tip"><strong>想要更准确的字幕？</strong>可以先用剪映识别同一个原视频并导出 SRT，再回到这里替换当前字幕。剪辑仍会使用已经上传的原视频，不需要重复上传。<button class="btn btn-outline btn-full btn-small" onclick="document.getElementById('fileInput').click()">导入剪映 SRT 字幕</button><small>请使用同一个原视频，并且不要先在剪映里裁剪、变速或改变开头，否则字幕时间会与素材错位。</small></div>
+        <div class="jianying-subtitle-tip"><strong>想要更准确的字幕？</strong>可以先用剪映识别同一个原视频并导出 SRT，再回到这里替换当前字幕。剪辑仍会使用已经上传的原视频，不需要重复上传。<button class="btn btn-outline btn-full btn-small" onclick="openSrtImport()">导入剪映 SRT 字幕</button><small>请使用同一个原视频，并且不要先在剪映里裁剪、变速或改变开头，否则字幕时间会与素材错位。</small></div>
         <div class="card">
           <div class="card-title">替换 / 导入字幕 (SRT)</div>
-          <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+          <div class="upload-area" id="uploadArea" onclick="openSrtImport()">
             <div class="icon">📄</div>
-            <p class="hint">拖拽或点击选择 SRT，可使用剪映导出的字幕</p>
+            <p class="hint" id="srtUploadHint">拖拽或点击选择 SRT，可使用剪映导出的字幕</p>
             <p class="filename" id="fileName"></p>
           </div>
           <input type="file" id="fileInput" accept=".srt,.txt" onchange="handleFile(this.files[0])">
-          <button class="btn btn-outline btn-full btn-small demo-only" style="margin-top:8px" onclick="loadStaticSrtEditor()">加载演示字幕</button>
         </div>
         <div class="card" id="fineMediaUploadCard" style="display:none">
           <div class="card-title">原视频（导出时需要）</div>
@@ -573,6 +572,7 @@ function init(){
     document.body.classList.add('static-demo');
     document.title='SRT Cutter - 静态演示';
     document.querySelector('.mode-note').innerHTML='可交互的功能模拟，不会上传文件 · <a href="https://github.com/chenzhenzhen2077/srtcut" target="_blank" rel="noopener">下载 Mac 本地版</a>';
+    document.getElementById('srtUploadHint').textContent='点击加载演示 SRT 字幕';
   }
   document.getElementById('modeChooser').classList.remove('hidden');
   document.getElementById('smartWorkspace').classList.add('hidden');
@@ -948,6 +948,7 @@ function tcToMs(s){const p=s.trim().split(/[:.]/);if(p.length<4)return 0;return 
 function msToTc(ms){const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000),sec=Math.floor((ms%60000)/1000),cs=Math.floor((ms%1000)/10);return `${pad(h)}:${pad(m)}:${pad(sec)}.${pad(cs)}`;function pad(n){return String(n).padStart(2,'0')}}
 
 function handleFile(file){if(!file)return;const r=new FileReader();r.onload=e=>handleSubtitleText(e.target.result,file.name);r.readAsText(file,'UTF-8')}
+function openSrtImport(){if(isStaticDemo()){loadStaticSrtEditor();return}document.getElementById('fileInput').click()}
 function handleSubtitleText(text,name){const segments=parseSRT(text);if(!segments.length){toast('没有识别到有效的 SRT 时间戳，请检查字幕格式','error');return}document.getElementById('fileName').textContent=name||'字幕文件';document.getElementById('uploadArea').classList.add('has-file');state.segments=segments;state.cutSet=new Set();renderTimeline();updateStats();document.getElementById('btnAuto').disabled=false;document.getElementById('btnClear').disabled=false;updateCutButton();toast('✅ 已载入 '+state.segments.length+' 条字幕段','success')}
 function handleVideo(file){if(!file||!validateUploadSize(file))return;const valid=file.type.startsWith('video/')||/\.(mp4|mov|mkv|avi|webm)$/i.test(file.name);if(!valid){toast('请选择原视频文件','error');return}state.videoFile=file;document.getElementById('videoFileName').textContent=file.name;document.getElementById('videoZone').classList.add('has-file');document.getElementById('fineSourceStatus').textContent='原视频已选择：'+file.name+'。剪辑会严格使用 SRT 时间戳。';updateCutButton()}
 function loadStaticSrtEditor(){if(!isStaticDemo())return;state.videoFile={name:'演示播客视频.mp4'};document.getElementById('videoFileName').textContent=state.videoFile.name;document.getElementById('videoZone').classList.add('has-file');document.getElementById('fineSourceStatus').textContent='演示字幕和模拟视频已准备，不会读取或上传真实文件。';handleSubtitleText(buildStaticDemoSrt(),'演示播客字幕.srt')}
