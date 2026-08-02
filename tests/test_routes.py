@@ -15,6 +15,8 @@ def test_health_and_index(tmp_path):
     assert "no-store" in index.headers["Cache-Control"]
     html = index.get_data(as_text=True)
     assert "已有 SRT 字幕" in html
+    assert "AI 内容方案" in html
+    assert "prepareSmartFromSrt()" in html
     assert "enterSrtMode()" in html
     assert "openSrtImport()" in html
     assert 'id="videoZone"' in html
