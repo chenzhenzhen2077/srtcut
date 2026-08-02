@@ -13,6 +13,10 @@ def test_health_and_index(tmp_path):
     index = client.get("/")
     assert index.status_code == 200
     assert "no-store" in index.headers["Cache-Control"]
+    html = index.get_data(as_text=True)
+    assert "已有 SRT 字幕" in html
+    assert "enterSrtMode()" in html
+    assert 'id="videoZone"' in html
     response = client.get("/health")
     assert response.status_code == 200
     assert response.get_json()["status"] == "ok"

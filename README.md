@@ -112,6 +112,7 @@ cd "$HOME/Downloads/srtcut-main"
 ## 功能
 
 - 导入 SRT 字幕并生成时间轴
+- 首页可直接选择“已有 SRT 字幕”，跳过语音转写
 - 上传视频或音频，使用本地 Whisper 自动生成 SRT
 - 检测口癖、重复词和静默
 - 手动或 AI 标记剪辑段
